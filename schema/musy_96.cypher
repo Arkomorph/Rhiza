@@ -32,7 +32,7 @@ CREATE (gaz:Flux           {nom: "Réseau gaz", vecteur: "gaz naturel"})
 CREATE (renov:Decision     {nom: "Rénovation énergétique", statut: "planifiée"})
 CREATE (demande:Decision   {nom: "Demande de permis", statut: "soumise"})
 CREATE (permis:Decision    {nom: "Octroi du permis", statut: "en attente"})
-CREATE (subv:Decision      {nom: "Octroi de subventionner", statut: "en attente"})
+CREATE (subv:Decision      {nom: "Octroi de subvention", statut: "en attente"})
 
 // ============================================================
 // Relations — chaque arête porte confidence, source, date
@@ -89,7 +89,7 @@ CREATE (realstone)-[:DECIDE_SUR {
 
 CREATE (renov)-[:IMPACTE {
   confidence: "high", source: "Dossier de rénovation", date: "2024"
-}]->(parc)
+}]->(bat96)
 
 CREATE (renov)-[:ENGAGE {
   confidence: "high", source: "Procédure cantonale", date: "2024"

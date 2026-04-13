@@ -4,14 +4,7 @@
 // a été prise, sans qu'ils aient aucune arête vers cette décision ?
 // ============================================================
 
-MATCH (acteur:Acteur)-[:HABITE_UTILISE]->(bat:Territoire)
-WHERE bat.type = "bâtiment"
-
-// Trouver les décisions qui impactent le bâtiment ou sa parcelle
-WITH acteur, bat
-MATCH (decision:Decision)-[:IMPACTE]->(cible:Territoire)
-WHERE bat = cible
-   OR (bat)-[:CONTENU_DANS]->(cible)
+MATCH (acteur:Acteur)-[:HABITE_UTILISE]->(bat:Territoire)<-[:IMPACTE]-(decision:Decision)
 
 // Exclure les acteurs qui ont un lien quelconque vers la décision
 WHERE NOT exists {
