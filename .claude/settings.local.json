@@ -1,0 +1,55 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(ls *)",
+      "Bash(docker *)",
+      "Bash(docker compose *)",
+      "Bash(cat * | docker exec *)",
+      "Bash(gh *)",
+      "Bash(wc *)",
+      "Bash(grep *)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:neo4j.com)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '== Rhiza == Ontologie: 4 noeuds, 9 relations. KIS. Abduction. Proposer avant d executer. Sprint 1: cas Musy bat. 96.'"
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Post-compaction Rhiza: Ontologie 4/9. Sprint actuel dans CLAUDE.md. Verifier schema/musy_96.cypher pour etat du graphe.'"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd $CLAUDE_PROJECT_DIR && echo '--- PreCompact Snapshot ---' && echo 'Modified files:' && git diff --name-only 2>/dev/null && echo 'Staged files:' && git diff --cached --name-only 2>/dev/null && echo 'Unstaged changes:' && git diff --stat 2>/dev/null"
+          }
+        ]
+      }
+    ]
+  }
+}
