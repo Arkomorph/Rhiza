@@ -1,15 +1,72 @@
+# Rhiza — Docker Compose production
+# Usage : cp .env.example .env  →  éditer  →  docker compose up -d
+
 services:
+
+  # ── Neo4j Community ────────────────────────────────────────
   neo4j:
     image: neo4j:5-community
     container_name: rhiza-neo4j
+    restart: unless-stopped
     ports:
-      - "7474:7474"   # Browser
-      - "7687:7687"   # Bolt
+      - "127.0.0.1:7474:7474"   # Browser — accès local/SSH tunnel uniquement
+      - "127.0.0.1:7687:7687"   # Bolt    — idem
     environment:
-      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD}
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD}
       NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_server_memory_heap_initial__size: 1g
+      NEO4J_server_memory_heap_max__size: 1500m
+      NEO4J_server_memory_pagecache_size: 1g
     volumes:
       - neo4j_data:/data
+      - neo4j_logs:/logs
+      - ./conf/neo4j.conf:/conf/neo4j.conf:ro
+      - ./schema:/import:ro
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "$NEO4J_PASSWORD", "RETURN 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ── PostgreSQL + PostGIS ───────────────────────────────────
+  postgis:
+    image: postgis/postgis:16-3.4
+    container_name: rhiza-postgis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"   # accès local uniquement
+    environment:
+      POSTGRES_DB: ${PG_DB:-rhiza}
+      POSTGRES_USER: ${PG_USER:-rhiza}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-rhiza}"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  # ── Caddy — reverse proxy HTTPS automatique ────────────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: rhiza-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"   # HTTP/3
+    volumes:
+      - ./conf/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      neo4j:
+        condition: service_healthy
 
 volumes:
   neo4j_data:
+  neo4j_logs:
+  pg_data:
+  caddy_data:
+  caddy_config:

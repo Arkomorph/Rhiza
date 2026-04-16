@@ -1,2 +1,12 @@
 desktop.ini
 00_DonneesDeBase/
+
+# Secrets — jamais commites
+.env
+
+# Certificats
+certs/
+
+# Donnees Docker (si volumes locaux)
+neo4j_data/
+pg_data/

@@ -8,42 +8,38 @@ Outil de lecture relationnelle du territoire urbain suisse, basé sur Neo4j.
 
 - [Docker](https://docs.docker.com/get-docker/) et Docker Compose
 
-### Lancer Neo4j
+### Configuration
+
+```bash
+cp .env.example .env
+# Éditer .env avec de vrais mots de passe
+```
+
+### Lancer les services
 
 ```bash
 docker compose up -d
 ```
 
-Neo4j est accessible sur :
-- **Browser** : http://localhost:7474
-- **Bolt** : bolt://localhost:7687
-- **Login** : `neo4j` / `${NEO4J_PASSWORD}`
+### Accès Neo4j (via SSH tunnel sur le VPS)
+
+```bash
+ssh -L 7474:localhost:7474 -L 7687:localhost:7687 rhiza@api.rhiza.ch
+```
+
+Puis ouvrir http://localhost:7474
 
 ### Charger le graphe
 
-Dans le Neo4j Browser (http://localhost:7474), copier-coller le contenu de :
-
-```
-schema/musy_96.cypher
-```
-
-Ou via la ligne de commande :
-
 ```bash
-cat schema/musy_96.cypher | docker exec -i rhiza-neo4j cypher-shell -u neo4j -p ${NEO4J_PASSWORD}
+docker exec -i rhiza-neo4j cypher-shell \
+  -u neo4j -p "$(grep NEO4J_PASSWORD .env | cut -d= -f2)" \
+  < schema/musy_96.cypher
 ```
 
-### Exécuter la requête « Paradoxe de Musy »
+## Ontologie (4 noeuds, 9 relations)
 
-```bash
-cat queries/paradoxe_musy.cypher | docker exec -i rhiza-neo4j cypher-shell -u neo4j -p ${NEO4J_PASSWORD}
-```
-
-Cette requête identifie les acteurs qui occupent un bâtiment affecté par une décision, sans avoir aucun lien vers cette décision.
-
-## Ontologie
-
-| Type de nœud | Exemples |
+| Type de noeud | Exemples |
 |---|---|
 | Territoire | quartier, parcelle, bâtiment |
 | Acteur | propriétaire, locataires, services publics |
@@ -58,7 +54,7 @@ Chaque relation porte 3 attributs obligatoires : `confidence`, `source`, `date`.
 docker compose down
 ```
 
-Les données persistent dans le volume `neo4j_data`. Pour tout supprimer :
+Les données persistent dans les volumes Docker. Pour tout supprimer :
 
 ```bash
 docker compose down -v

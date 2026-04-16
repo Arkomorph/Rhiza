@@ -1,0 +1,16 @@
+# Rhiza — Caddy reverse proxy
+# HTTPS automatique via Let's Encrypt
+
+api.rhiza.ch {
+	# Neo4j Browser (phase 1)
+	# Sera remplacé par le backend Rust/Axum plus tard
+	reverse_proxy neo4j:7474
+
+	# Headers de sécurité
+	header {
+		X-Content-Type-Options    nosniff
+		X-Frame-Options           SAMEORIGIN
+		Referrer-Policy           strict-origin-when-cross-origin
+		-Server
+	}
+}
