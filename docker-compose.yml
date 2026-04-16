@@ -12,7 +12,7 @@ services:
       - "127.0.0.1:7474:7474"   # Browser — accès local/SSH tunnel uniquement
       - "127.0.0.1:7687:7687"   # Bolt    — idem
     environment:
-      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD}
+      NEO4J_AUTH: none   # mot de passe set via cypher-shell (supporte / dans le mdp)
       NEO4J_PLUGINS: '["apoc"]'
       NEO4J_server_memory_heap_initial__size: 1g
       NEO4J_server_memory_heap_max__size: 1500m
@@ -23,7 +23,7 @@ services:
       - ./conf/neo4j.conf:/conf/neo4j.conf:ro
       - ./schema:/import:ro
     healthcheck:
-      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "$NEO4J_PASSWORD", "RETURN 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
