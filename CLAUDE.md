@@ -12,7 +12,7 @@ Cas fondateur : paradoxe de la rénovation énergétique à Musy (bâtiments 96 
 ## Stack technique
 - Base graphe : Neo4j Community (Cypher)
 - Base géo : PostgreSQL + PostGIS (bi-temporal, WFS, EGRID/EGID)
-- Backend : Rust + Axum
+- Backend : Node.js + TypeScript + Fastify
 - Vue cartographique : MapLibre GL JS
 - Vue graphe : Sigma.js v3
 - Frontend : React + TypeScript + Zustand (currentTimestamp partagé)

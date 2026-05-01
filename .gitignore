@@ -7,6 +7,10 @@ desktop.ini
 # Certificats
 certs/
 
+# Node
+node_modules/
+dist/
+
 # Donnees Docker (si volumes locaux)
 neo4j_data/
 pg_data/

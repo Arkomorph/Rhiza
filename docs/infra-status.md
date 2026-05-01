@@ -62,7 +62,7 @@ ssh rhiza
 
 ## Pas encore déployé
 
-- Backend Rust/Axum
+- Backend Node.js / TypeScript / Fastify
 - Frontend React + TypeScript + Zustand
 - Vue cartographique MapLibre GL JS
 - Vue graphe Sigma.js v3
