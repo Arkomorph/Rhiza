@@ -2,6 +2,7 @@
 import React from 'react';
 import { C, F } from '../config/theme.js';
 import { CATALOG } from '../data/catalog.js';
+import Icon from '../components/Icon.jsx';
 
 const STATUT_LABEL = { brouillon: "brouillon", configuree: "configurée", en_service: "en service", erreur: "erreur" };
 const STATUT_STYLE = {
@@ -115,7 +116,12 @@ export default function DonneesPage({
                   title={isExpanded ? "Masquer l'historique" : "Voir l'historique"}
                 >{isExpanded ? "▾" : "▸"}</span>
               )}
-              <span onClick={() => openSourceStepperEdit(s.id)} style={{ width: 24, textAlign: "center", fontSize: 14, color: C.faint, cursor: "pointer", flexShrink: 0 }} title="Configurer">⚙</span>
+              <span onClick={() => openSourceStepperEdit(s.id)} style={{ width: 24, textAlign: "center", cursor: "pointer", flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} title="Configurer">
+                <Icon name="pencil" size={14} color={C.edit} />
+              </span>
+              <span style={{ width: 24, textAlign: "center", cursor: "pointer", flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} title="Supprimer">
+                <Icon name="trash" size={14} color={C.edit} />
+              </span>
             </div>
 
             {/* Historique déplié */}

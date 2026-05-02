@@ -55,18 +55,7 @@ export default function DerivedPropModal({
         {/* Body — formulaire */}
         <div style={{ overflowY: "auto", paddingRight: 4 }}>
           {/* Clé + Label sur une ligne */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 12, marginBottom: 12 }}>
-            <div>
-              <label style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, fontFamily: F.body }}>Clé interne</label>
-              <input
-                type="text"
-                value={draft.key}
-                onChange={e => setDraft({ key: e.target.value })}
-                placeholder="snake_case"
-                style={{ width: "100%", padding: "7px 10px", marginTop: 4, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", border: `1px solid ${draft.key && !keyValid ? C.error : C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box", background: C.surface }}
-              />
-              {draft.key && !keyValid && <div style={{ fontSize: 9, color: C.error, marginTop: 3 }}>Format : snake_case (lettres minuscules, chiffres, underscores)</div>}
-            </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 12, marginBottom: 12 }}>
             <div>
               <label style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, fontFamily: F.body }}>Label affiché</label>
               <input
@@ -76,6 +65,17 @@ export default function DerivedPropModal({
                 placeholder="Nombre de propriétés possédées"
                 style={{ width: "100%", padding: "7px 10px", marginTop: 4, fontSize: 11, fontFamily: F.body, border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box", background: C.surface }}
               />
+            </div>
+            <div>
+              <label style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, fontFamily: F.body }}>Clé interne</label>
+              <input
+                type="text"
+                value={draft.key}
+                onChange={e => setDraft({ key: e.target.value })}
+                placeholder="snake_case"
+                style={{ width: "100%", padding: "7px 10px", marginTop: 4, fontSize: 11, fontFamily: F.body, border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box", background: C.surface }}
+              />
+              {draft.key && !keyValid && <div style={{ fontSize: 9, color: C.error, marginTop: 3 }}>Format : snake_case (lettres minuscules, chiffres, underscores)</div>}
             </div>
           </div>
 

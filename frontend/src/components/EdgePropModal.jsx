@@ -60,7 +60,17 @@ export default function EdgePropModal({
         </div>
 
         <div style={{ overflowY: "auto", paddingRight: 4 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 12, marginBottom: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, fontFamily: F.body }}>Label affiché</label>
+              <input
+                type="text"
+                value={draft.label || ""}
+                onChange={e => setDraft({ label: e.target.value })}
+                placeholder="Régime de propriété"
+                style={{ width: "100%", padding: "7px 10px", marginTop: 4, fontSize: 11, fontFamily: F.body, border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box", background: C.surface }}
+              />
+            </div>
             <div>
               <label style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, fontFamily: F.body }}>Clé interne</label>
               <input
@@ -72,16 +82,6 @@ export default function EdgePropModal({
               />
               {draft.key && !keyValid && <div style={{ fontSize: 9, color: C.error, marginTop: 3 }}>Format : snake_case</div>}
               {keyConflict && <div style={{ fontSize: 9, color: C.error, marginTop: 3 }}>Clé déjà utilisée sur cette relation.</div>}
-            </div>
-            <div>
-              <label style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, fontFamily: F.body }}>Label affiché</label>
-              <input
-                type="text"
-                value={draft.label || ""}
-                onChange={e => setDraft({ label: e.target.value })}
-                placeholder="Régime de propriété"
-                style={{ width: "100%", padding: "7px 10px", marginTop: 4, fontSize: 11, fontFamily: F.body, border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box", background: C.surface }}
-              />
             </div>
           </div>
 

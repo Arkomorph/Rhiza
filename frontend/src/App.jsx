@@ -2105,7 +2105,17 @@ export default function App() {
               {/* Body */}
               <div style={{ overflowY: "auto", paddingRight: 4 }}>
                 {/* Clé + Label */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 12, marginBottom: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 12, marginBottom: 12 }}>
+                  <div>
+                    <label style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, fontFamily: F.body }}>Label affiché</label>
+                    <input
+                      type="text"
+                      value={draft.label || ""}
+                      onChange={e => setDraft({ label: e.target.value })}
+                      placeholder="Tranche d'âge"
+                      style={{ width: "100%", padding: "7px 10px", marginTop: 4, fontSize: 11, fontFamily: F.body, border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box", background: C.surface }}
+                    />
+                  </div>
                   <div>
                     <label style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, fontFamily: F.body }}>Clé interne {isEdit && <span style={{ color: C.muted, fontWeight: 400, textTransform: "none", letterSpacing: 0, fontStyle: "italic" }}>· immutable</span>}</label>
                     <input
@@ -2120,16 +2130,6 @@ export default function App() {
                     {draft.key && !keyValid && <div style={{ fontSize: 9, color: C.error, marginTop: 3 }}>Format : snake_case (lettres minuscules, chiffres, underscores)</div>}
                     {keyConflict && <div style={{ fontSize: 9, color: C.error, marginTop: 3 }}>Clé déjà utilisée sur ce nœud (héritée ou propre).</div>}
                     {isEdit && <div style={{ fontSize: 9, color: C.faint, marginTop: 3, fontStyle: "italic" }}>Préserve les références dans les mappings et patterns. Pour renommer, supprime puis recrée — au prix de réétablir les liens.</div>}
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, fontFamily: F.body }}>Label affiché</label>
-                    <input
-                      type="text"
-                      value={draft.label || ""}
-                      onChange={e => setDraft({ label: e.target.value })}
-                      placeholder="Tranche d'âge"
-                      style={{ width: "100%", padding: "7px 10px", marginTop: 4, fontSize: 11, fontFamily: F.body, border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box", background: C.surface }}
-                    />
                   </div>
                 </div>
 
