@@ -794,7 +794,7 @@ export default function App() {
                 style={{
                   fontSize: 12,
                   fontWeight: isActive ? 700 : 400,
-                  fontFamily: F.body,
+                  fontFamily: F.title,
                   textTransform: "uppercase",
                   letterSpacing: "0.04em",
                   color: isActive ? C.text : C.faint,
