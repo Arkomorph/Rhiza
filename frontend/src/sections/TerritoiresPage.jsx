@@ -4,8 +4,14 @@ import { C, F, KIND_LEVEL } from '../config/theme.js';
 import { TC } from '../config/palettes.js';
 import { TYPES, ROOT } from '../config/constants.js';
 import { lighten } from '../helpers/colors.js';
+import TreeNode from '../components/TreeNode.jsx';
 
-export default function TerritoiresPage({ treeRef, lines, nodes, TreeNode }) {
+export default function TerritoiresPage({
+  treeRef, lines, nodes,
+  editingId, editingName, setEditingName,
+  onStartEdit, onCommitEdit, onCancelEdit,
+  onEdit, onArchive, onCreateChild,
+}) {
   return (
     <div ref={treeRef} style={{ maxWidth: 800, margin: "0 auto", padding: "28px 24px", position: "relative" }}>
       {/* Arbre de lignes SVG — raccorde les pastilles parent → enfant */}
@@ -31,12 +37,16 @@ export default function TerritoiresPage({ treeRef, lines, nodes, TreeNode }) {
 
       {/* Tree starting from Suisse */}
       <div style={{ position: "relative", zIndex: 1 }}>
-        <TreeNode node={ROOT} depth={0} />
+        <TreeNode
+          node={ROOT} depth={0} nodes={nodes}
+          editingId={editingId} editingName={editingName} setEditingName={setEditingName}
+          onStartEdit={onStartEdit} onCommitEdit={onCommitEdit} onCancelEdit={onCancelEdit}
+          onEdit={onEdit} onArchive={onArchive} onCreateChild={onCreateChild}
+        />
       </div>
 
       {/* Legend — statuts (principal) + types (secondaire) */}
       <div style={{ marginTop: 24, paddingTop: 12, borderTop: `1px solid ${C.blight}` }}>
-        {/* Statuts — expression graphique des 4 paliers */}
         <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
           <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint }}>Statuts</span>
           {(() => {
@@ -63,7 +73,6 @@ export default function TerritoiresPage({ treeRef, lines, nodes, TreeNode }) {
             );
           })()}
         </div>
-        {/* Types — secondaire */}
         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint }}>Types</span>
           {TYPES.map(t => (
