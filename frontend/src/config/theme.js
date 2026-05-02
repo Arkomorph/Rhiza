@@ -13,8 +13,8 @@ export const C = {
 };
 
 export const F = {
-  title: "'Geist', 'DM Sans', sans-serif",
-  body: "'Inter', sans-serif",
+  title: "'Geist', sans-serif",
+  body: "'IBM Plex Sans', sans-serif",
   logo: "'DM Sans', sans-serif",
 };
 
