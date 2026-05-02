@@ -725,8 +725,8 @@ export default function App() {
                   {!node.permanent && <span onClick={() => {
                     setCreateModal({ mode: "edit", tab: "identite", type: node.type, parentId: node.parentId, nodeId: node.id });
                     setCreateName(node.placeholder ? "" : node.nom);
-                  }} style={{ width: 24, textAlign: "center", fontSize: 13, color: C.faint, cursor: "pointer" }} title={node.placeholder ? "Nommer" : "Éditer"}>✎</span>}
-                  {!node.permanent && <span onClick={() => setArchiveModal({ nodeId: node.id })} style={{ width: 20, textAlign: "center", fontSize: 13, color: C.error, cursor: "pointer" }} title="Archiver">✕</span>}
+                  }} style={{ width: 24, textAlign: "center", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }} title={node.placeholder ? "Nommer" : "Éditer"}><Icon name="pencil" size={13} color={C.edit} /></span>}
+                  {!node.permanent && <span onClick={() => setArchiveModal({ nodeId: node.id })} style={{ width: 20, textAlign: "center", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }} title="Archiver"><Icon name="trash" size={13} color={C.error} /></span>}
                 </div>
               </div>
             );
@@ -3789,7 +3789,7 @@ export default function App() {
                                         </span>
                                       );
                                     })()}
-                                    <span style={{ fontSize: 11, color: C.faint, width: 14, textAlign: "center", flexShrink: 0 }}>{p.expanded ? "▾" : "▸"}</span>
+                                    <span style={{ width: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name={p.expanded ? "caretDown" : "caretRight"} size={12} color={C.faint} /></span>
                                     <span
                                       onClick={(e) => { e.stopPropagation(); removePattern(p.id); }}
                                       style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 4, borderRadius: 4, flexShrink: 0 }}

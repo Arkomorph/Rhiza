@@ -101,27 +101,24 @@ export default function DonneesPage({
               <span
                 onClick={() => canExecute && executeSource(s.id)}
                 style={{
-                  width: 28, height: 24, textAlign: "center", lineHeight: "24px", fontSize: 11,
-                  color: canExecute ? "#fff" : C.faint,
+                  width: 28, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center",
                   background: canExecute ? C.accent : C.alt,
                   borderRadius: 5, cursor: canExecute ? "pointer" : "not-allowed",
                   flexShrink: 0, userSelect: "none",
                 }}
                 title={canExecute ? "Exécuter l'import" : "Configure d'abord la source (source + mapping + patterns)"}
-              >▶</span>
+              ><Icon name="play" size={12} color={canExecute ? "#fff" : C.faint} /></span>
               <span onClick={() => openSourceStepperEdit(s.id)} style={{ width: 24, textAlign: "center", cursor: "pointer", flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} title="Configurer">
                 <Icon name="pencil" size={14} color={C.edit} />
               </span>
               <span style={{ width: 24, textAlign: "center", cursor: "pointer", flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} title="Supprimer">
                 <Icon name="trash" size={14} color={C.error} />
               </span>
-              {execs.length > 0 && (
-                <span
-                  onClick={() => setExpandedHistory(prev => ({ ...prev, [s.id]: !prev[s.id] }))}
-                  style={{ width: 24, textAlign: "center", cursor: "pointer", flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
-                  title={isExpanded ? "Masquer l'historique" : "Voir l'historique"}
-                ><Icon name={isExpanded ? "caretDown" : "caretRight"} size={14} color={C.faint} /></span>
-              )}
+              <span
+                onClick={() => execs.length > 0 && setExpandedHistory(prev => ({ ...prev, [s.id]: !prev[s.id] }))}
+                style={{ width: 24, textAlign: "center", cursor: execs.length > 0 ? "pointer" : "default", flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", opacity: execs.length > 0 ? 1 : 0.3 }}
+                title={execs.length > 0 ? (isExpanded ? "Masquer l'historique" : "Voir l'historique") : "Aucun historique"}
+              ><Icon name={isExpanded ? "caretDown" : "caretRight"} size={14} color={C.faint} /></span>
             </div>
 
             {/* Historique déplié */}
