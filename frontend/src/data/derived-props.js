@@ -1,0 +1,58 @@
+// Propriétés dérivées initiales — 5 cas validés couvrant les 3 mécanismes (on_the_fly, materialized, inference_pattern)
+export const initialDerivedProps = [
+    {
+      id: "der_mvr_profil",
+      targetPath: ["Acteur", "Humain"],          // attaché à Acteur:Humain
+      key: "mvr_profil",
+      label: "Profil MVR",
+      returnType: "enum",
+      mechanism: "inference_pattern",            // on_the_fly | materialized | inference_pattern
+      confidence: "inferred",
+      formula: "MATCH (a:Acteur:Humain)-[h:HABITE_UTILISE]->(t:Territoire)\nMATCH (t)-[:CONTENU_DANS*]->(secteur:Territoire)\nWHERE h.regime_tenure IS NOT NULL AND h.duree_occupation IS NOT NULL\n// ... pattern multi-critères selon D6\nSET a.mvr_profil = ?,\n    a.mvr_inferred_at = datetime()",
+      notes: "Inférence MVR selon D6. Valeurs : Bourgeois, Classic Middle Class, Rural Traditionalists, Modern Workers, Open Middle Class, Improvised/Established Alternatives, Urban Avant-Garde.",
+    },
+    {
+      id: "der_nb_proprietes",
+      targetPath: ["Acteur"],
+      key: "nb_proprietes",
+      label: "Nombre de propriétés possédées",
+      returnType: "integer",
+      mechanism: "on_the_fly",
+      confidence: "high",
+      formula: "MATCH (a:Acteur {uuid: $uuid})-[:POSSEDE]->(t:Territoire)\nWHERE t:Parcelle OR t:Bâtiment\nRETURN count(DISTINCT t) AS nb_proprietes",
+      notes: "Compte des Territoires possédés (Parcelles et Bâtiments) via degré sortant des arêtes Possède.",
+    },
+    {
+      id: "der_taille_patrimoine",
+      targetPath: ["Acteur", "Humain", "Groupe", "Personne_morale"],
+      key: "taille_patrimoine",
+      label: "Taille du patrimoine (m²)",
+      returnType: "float",
+      mechanism: "materialized",
+      confidence: "medium",
+      formula: "MATCH (pm:Personne_morale {uuid: $uuid})-[:POSSEDE]->(p:Parcelle)\nRETURN sum(p.surface) AS taille_patrimoine",
+      notes: "Somme des surfaces des Parcelles possédées. Matérialisée car lue souvent dans les analyses agrégées.",
+    },
+    {
+      id: "der_taux_proprietaires",
+      targetPath: ["Territoire", "Bâtiment"],
+      key: "taux_proprietaires",
+      label: "Taux de propriétaires",
+      returnType: "float",
+      mechanism: "on_the_fly",
+      confidence: "medium",
+      formula: "MATCH (b:Bâtiment {uuid: $uuid})\nOPTIONAL MATCH (a1:Acteur)-[:POSSEDE]->(b)\nOPTIONAL MATCH (a2:Acteur)-[:HABITE_UTILISE]->(b)\nWITH count(DISTINCT a1) AS proprietaires, count(DISTINCT a2) AS occupants\nRETURN CASE WHEN occupants = 0 THEN null ELSE toFloat(proprietaires) / occupants END AS taux",
+      notes: "Proportion d'arêtes Possède sur les arêtes Habite/utilise pour ce Bâtiment.",
+    },
+    {
+      id: "der_regime_dominant",
+      targetPath: ["Territoire", "Parcelle"],
+      key: "regime_dominant",
+      label: "Régime dominant",
+      returnType: "enum",
+      mechanism: "on_the_fly",
+      confidence: "medium",
+      formula: "MATCH (a:Acteur)-[r:POSSEDE]->(p:Parcelle {uuid: $uuid})\nWHERE r.regime IS NOT NULL\nRETURN r.regime AS regime, count(*) AS n\nORDER BY n DESC LIMIT 1",
+      notes: "Régime majoritaire des arêtes Possède entrantes. Révèle PPE, locatif, hoirie, etc. par pattern.",
+    },
+];
