@@ -3789,16 +3789,16 @@ export default function App() {
                                         </span>
                                       );
                                     })()}
-                                    <span style={{ width: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name={p.expanded ? "caretDown" : "caretRight"} size={12} color={C.faint} /></span>
                                     <span
                                       onClick={(e) => { e.stopPropagation(); removePattern(p.id); }}
                                       style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 4, borderRadius: 4, flexShrink: 0 }}
                                       title="Retirer ce pattern"
-                                      onMouseEnter={e => e.currentTarget.style.background = "#fef2f2"}
+                                      onMouseEnter={e => e.currentTarget.style.background = C.errorL}
                                       onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                                     >
                                       <Icon name="trash" size={13} color={C.error} />
                                     </span>
+                                    <span style={{ width: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name={p.expanded ? "caretDown" : "caretRight"} size={12} color={C.faint} /></span>
                                   </div>
                                 </div>
 
