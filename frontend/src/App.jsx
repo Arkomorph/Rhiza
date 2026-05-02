@@ -31,6 +31,10 @@ import PatternPropTable from './components/PatternPropTable.jsx';
 
 // ─── Sections ───────────────────────────────────────────────────────
 import LoginPage from './sections/LoginPage.jsx';
+import LogPage from './sections/LogPage.jsx';
+import DonneesPage from './sections/DonneesPage.jsx';
+import TerritoiresPage from './sections/TerritoiresPage.jsx';
+import log from './logger.js';
 
 // ─── ANCIEN BLOC — supprimé, voir components/ ───────────────────────
 // DataTable, Icon, PatternPastille, PatternPropTable extraits.
@@ -785,12 +789,13 @@ export default function App() {
             { key: "donnees", label: "Données", enabled: true },
             { key: "schema", label: "Schéma", enabled: true },
             { key: "wiki", label: "Wiki", enabled: false },
+            { key: "logs", label: "Logs", enabled: true },
           ].map(t => {
             const isActive = section === t.key;
             return (
               <span
                 key={t.key}
-                onClick={() => { if (t.enabled) setSection(t.key); }}
+                onClick={() => { if (t.enabled) { log.info('nav', `section → ${t.key}`); setSection(t.key); } }}
                 style={{
                   fontSize: 12,
                   fontWeight: isActive ? 700 : 400,
@@ -812,255 +817,18 @@ export default function App() {
 
       {/* N1 — Territoires */}
       {section === "territoires" && (
-      <div ref={treeRef} style={{ maxWidth: 800, margin: "0 auto", padding: "28px 24px", position: "relative" }}>
-        {/* Arbre de lignes SVG — raccorde les pastilles parent → enfant */}
-        <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }}>
-          {lines.map((l, i) => {
-            const dashed = l.kind === "cascade" || l.kind === "placeholder";
-            const strokeColor = lighten(l.color, KIND_LEVEL[l.kind]);
-            return (
-              <path
-                key={i}
-                d={`M ${l.fx} ${l.fy + l.fr} L ${l.fx} ${l.ty} L ${l.tx - l.tr} ${l.ty}`}
-                stroke={strokeColor}
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeDasharray={dashed ? "0 4" : undefined}
-                fill="none"
-              />
-            );
-          })}
-        </svg>
-
-        <div style={{ fontSize: 16, fontWeight: 600, fontFamily: F.title, textTransform: "uppercase", marginBottom: 20, position: "relative", zIndex: 1 }}>Territoires</div>
-
-        {/* Tree starting from Suisse */}
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <TreeNode node={ROOT} depth={0} />
-        </div>
-
-        {/* Legend — statuts (principal) + types (secondaire) */}
-        <div style={{ marginTop: 24, paddingTop: 12, borderTop: `1px solid ${C.blight}` }}>
-          {/* Statuts — expression graphique des 4 paliers */}
-          <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint }}>Statuts</span>
-            {(() => {
-              const demo = TC.Suisse; // couleur neutre de démonstration
-              return (
-                <>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.text }}>
-                    <div style={{ width: 10, height: 10, borderRadius: 5, border: `2px solid ${demo}`, background: demo }} />
-                    Actif
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.text }}>
-                    <div style={{ width: 10, height: 10, borderRadius: 5, border: `2px solid ${lighten(demo, KIND_LEVEL.draft)}`, background: "transparent" }} />
-                    Brouillon
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.text }}>
-                    <div style={{ width: 10, height: 10, borderRadius: 5, border: `2px dashed ${lighten(demo, KIND_LEVEL.placeholder)}`, background: "transparent" }} />
-                    À nommer
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.text }}>
-                    <div style={{ width: 8, height: 8, borderRadius: 4, border: `2px dashed ${lighten(demo, KIND_LEVEL.cascade)}`, background: "transparent" }} />
-                    À créer
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-          {/* Types — secondaire */}
-          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint }}>Types</span>
-            {TYPES.map(t => (
-              <div key={t} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: C.muted }}>
-                <div style={{ width: 6, height: 6, borderRadius: 3, background: TC[t] }} />{t}
-              </div>
-            ))}
-          </div>
-        </div>
-        <div style={{ marginTop: 12, fontSize: 10, color: C.faint }}>
-          PostgreSQL : {nodes.length} nœud{nodes.length !== 1 ? "s" : ""} · Neo4j : {nodes.filter(n => n.parentId).length} relation{nodes.filter(n => n.parentId).length !== 1 ? "s" : ""} Contenu_dans
-        </div>
-      </div>
+        <TerritoiresPage treeRef={treeRef} lines={lines} nodes={nodes} TreeNode={TreeNode} />
       )}
 
       {/* N3 — Données (catalogue des sources) */}
-      {section === "donnees" && (() => {
-        // Source enrichie avec son statut et le nombre de territoires qui l'utilisent
-        const allSources = [...CATALOG, ...customSources].map(s => {
-          const cfg = sourceConfig[s.id] || {};
-          const nLinked = nodes.filter(n => (n.sources || []).includes(s.id)).length;
-          // Statut dérivé : brouillon (au moins un step manquant) / configurée (3 steps OK) / en service (au moins un import) / erreur
-          let statut = "brouillon";
-          if (cfg.hasError) statut = "erreur";
-          else if (cfg.imported) statut = "en_service";
-          else if (cfg.sourceOk && cfg.mappingOk && cfg.patternsOk) statut = "configuree";
-          return { ...s, statut, nLinked };
-        });
-        const dataFiltered = allSources.filter(s =>
-          !dataFilter || s.nom.toLowerCase().includes(dataFilter.toLowerCase())
-          || s.format.toLowerCase().includes(dataFilter.toLowerCase())
-          || (s.portail || "").toLowerCase().includes(dataFilter.toLowerCase())
-          || s.statut.toLowerCase().includes(dataFilter.toLowerCase())
-        );
-        const statutLabel = { brouillon: "brouillon", configuree: "configurée", en_service: "en service", erreur: "erreur" };
-        const statutStyle = {
-          brouillon: { bg: C.alt, fg: C.faint },
-          configuree: { bg: C.infoL, fg: C.info },
-          en_service: { bg: C.accentL, fg: C.accent },
-          erreur: { bg: "#fdf0f0", fg: C.error },
-        };
-
-        return (
-          <div style={{ maxWidth: 800, margin: "0 auto", padding: "28px 24px" }}>
-            {/* Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20 }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 600, fontFamily: F.title, textTransform: "uppercase" }}>Données</div>
-                <div style={{ fontSize: 11, color: C.faint, marginTop: 2 }}>Catalogue · {allSources.length} source{allSources.length > 1 ? "s" : ""}</div>
-              </div>
-              <button
-                onClick={openSourceStepperCreate}
-                style={{ fontSize: 12, padding: "8px 16px", border: "none", borderRadius: 7, background: C.accent, color: "#fff", cursor: "pointer", fontWeight: 600, fontFamily: F.body }}
-              >+ Ajouter une source</button>
-            </div>
-
-            {/* Filtre */}
-            <input
-              value={dataFilter}
-              onChange={e => setDataFilter(e.target.value)}
-              placeholder="Filtrer par nom, format, portail, statut..."
-              style={{ width: "100%", padding: "10px 14px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, outline: "none", marginBottom: 16, boxSizing: "border-box", fontFamily: F.body }}
-            />
-
-            {/* Liste */}
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, marginBottom: 8 }}>
-              {dataFilter ? `${dataFiltered.length} résultat${dataFiltered.length !== 1 ? "s" : ""}` : `Toutes les sources`}
-            </div>
-            {dataFiltered.map(s => {
-              const st = statutStyle[s.statut];
-              const cfg = sourceConfig[s.id] || {};
-              const execs = cfg.executions || [];
-              const lastExec = execs[execs.length - 1];
-              const canExecute = cfg.sourceOk && cfg.mappingOk && cfg.patternsOk;
-              const isExpanded = !!expandedHistory[s.id];
-
-              // Format date relative simple pour le mock
-              const relDate = (iso) => {
-                if (!iso) return "";
-                const diff = Date.now() - new Date(iso).getTime();
-                const sec = Math.floor(diff / 1000);
-                if (sec < 60) return `il y a ${sec}s`;
-                const min = Math.floor(sec / 60);
-                if (min < 60) return `il y a ${min}min`;
-                const h = Math.floor(min / 60);
-                if (h < 24) return `il y a ${h}h`;
-                const d = Math.floor(h / 24);
-                return `il y a ${d}j`;
-              };
-
-              return (
-                <div key={s.id} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, marginBottom: 8 }}>
-                  <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, fontFamily: F.title, textTransform: "uppercase" }}>{s.nom}</div>
-                      <div style={{ fontSize: 10, color: C.faint, marginTop: 2 }}>
-                        {s.format} · {s.portail || "—"} · {s.id}
-                        {s.nLinked > 0 && <span> · <span style={{ color: C.accent }}>liée à {s.nLinked} territoire{s.nLinked > 1 ? "s" : ""}</span></span>}
-                        {lastExec && (
-                          <> · <span style={{ color: C.muted }}>dernière exécution {relDate(lastExec.date)} · {lastExec.summary.toLowerCase()}</span></>
-                        )}
-                      </div>
-                    </div>
-                    <span style={{ fontSize: 10, padding: "3px 8px", borderRadius: 4, background: st.bg, color: st.fg, fontWeight: 600, flexShrink: 0 }}>
-                      {statutLabel[s.statut]}
-                    </span>
-                    <span
-                      onClick={() => canExecute && executeSource(s.id)}
-                      style={{
-                        width: 28, height: 24, textAlign: "center", lineHeight: "24px", fontSize: 11,
-                        color: canExecute ? "#fff" : C.faint,
-                        background: canExecute ? C.accent : C.alt,
-                        borderRadius: 5, cursor: canExecute ? "pointer" : "not-allowed",
-                        flexShrink: 0, userSelect: "none",
-                      }}
-                      title={canExecute ? "Exécuter l'import" : "Configure d'abord la source (source + mapping + patterns)"}
-                    >▶</span>
-                    {execs.length > 0 && (
-                      <span
-                        onClick={() => setExpandedHistory(prev => ({ ...prev, [s.id]: !prev[s.id] }))}
-                        style={{ width: 20, textAlign: "center", fontSize: 11, color: C.faint, cursor: "pointer", flexShrink: 0 }}
-                        title={isExpanded ? "Masquer l'historique" : "Voir l'historique"}
-                      >{isExpanded ? "▾" : "▸"}</span>
-                    )}
-                    <span onClick={() => openSourceStepperEdit(s.id)} style={{ width: 24, textAlign: "center", fontSize: 14, color: C.faint, cursor: "pointer", flexShrink: 0 }} title="Configurer">⚙</span>
-                  </div>
-
-                  {/* Historique déplié */}
-                  {isExpanded && execs.length > 0 && (
-                    <div style={{ borderTop: `1px solid ${C.blight}`, padding: "10px 14px", background: C.alt }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, marginBottom: 8 }}>
-                        Historique des exécutions · {execs.length}
-                      </div>
-                      {[...execs].reverse().map((ex, i) => {
-                        const idx = execs.length - i;
-                        return (
-                          <div key={ex.id} style={{ background: C.surface, border: `1px solid ${C.blight}`, borderRadius: 6, padding: "8px 10px", marginBottom: 6 }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <span style={{ fontSize: 11, fontWeight: 600, color: C.text }}>
-                                #{idx} · {new Date(ex.date).toLocaleString("fr-CH", { dateStyle: "short", timeStyle: "short" })}
-                              </span>
-                              <span style={{ fontSize: 10, color: ex.changes.length > 0 ? C.accent : C.faint, fontWeight: 600 }}>
-                                {ex.summary}
-                              </span>
-                            </div>
-                            {ex.changes.length > 0 && (
-                              <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 2 }}>
-                                {ex.changes.map((ch, j) => (
-                                  <div key={j} style={{ fontSize: 10, color: C.muted, display: "flex", alignItems: "center", gap: 6 }}>
-                                    <span style={{
-                                      fontSize: 9, padding: "1px 5px", borderRadius: 3,
-                                      background: ch.type === "create" ? C.accentL : ch.type === "update" ? C.infoL : "#fdf0f0",
-                                      color: ch.type === "create" ? C.accent : ch.type === "update" ? C.info : C.error,
-                                      fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em",
-                                      minWidth: 48, textAlign: "center",
-                                    }}>{ch.type}</span>
-                                    <span>{ch.description}</span>
-                                    {ch.type === "update" && (
-                                      <span style={{ fontSize: 9, color: C.faint, fontFamily: "monospace" }}>
-                                        {ch.oldValue} → {ch.newValue}
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {ex.autoDecisions.length > 0 && (
-                              <div style={{ marginTop: 6, fontSize: 10, color: C.faint, fontStyle: "italic" }}>
-                                → {ex.autoDecisions.length} décision{ex.autoDecisions.length > 1 ? "s" : ""} créée{ex.autoDecisions.length > 1 ? "s" : ""} automatiquement (D9)
-                              </div>
-                            )}
-                            {ex.geomSummary && ex.geomSummary.length > 0 && (
-                              <div style={{ marginTop: 6, fontSize: 10, color: C.muted, lineHeight: 1.4 }}>
-                                <span style={{ color: C.faint }}>Géométries chargées :</span> {ex.geomSummary.join(" · ")}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            {dataFiltered.length === 0 && (
-              <div style={{ textAlign: "center", padding: "40px 20px", color: C.faint, fontSize: 12 }}>
-                Aucune source ne correspond au filtre.
-              </div>
-            )}
-          </div>
-        );
-      })()}
+      {section === "donnees" && (
+        <DonneesPage
+          customSources={customSources} sourceConfig={sourceConfig} nodes={nodes}
+          dataFilter={dataFilter} setDataFilter={setDataFilter}
+          expandedHistory={expandedHistory} setExpandedHistory={setExpandedHistory}
+          openSourceStepperCreate={openSourceStepperCreate} openSourceStepperEdit={openSourceStepperEdit} executeSource={executeSource}
+        />
+      )}
 
       {/* ═══ SECTION SCHÉMA — Itération 1 : navigation hiérarchique read-only ═══ */}
       {section === "schema" && (() => {
@@ -5288,6 +5056,8 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {section === "logs" && <LogPage />}
     </div>
   );
 }
