@@ -23,218 +23,16 @@ import { normEnumValue, normEnumValues, previewEnumValues } from './helpers/enum
 import { TYPE_FAMILY, EDGE_TYPES, compatibleEdges } from './helpers/spatial.js';
 import { isPatternCompleteHelper, firstMissingHintHelper, getStepMissing } from './helpers/patterns.js';
 
-// ─── DataTable minimal ────────────────────────────────────────────────
-// Composant de table réutilisable. API : columns = [{key, label, width?, render?}], rows = [{...}]
-// Pour l'instant : rendu + tri optionnel. L'édition par lot, copier-coller, sélection multi-cellules
-// seront ajoutés au parcours 4 (Éditer) sous forme d'extension du même composant.
-function DataTable({ columns, rows, emptyMessage = "Aucune donnée", dense = false, rowBackground = null, rowBorderLeft = null }) {
-  const [sortKey, setSortKey] = useState(null);
-  const [sortDir, setSortDir] = useState("asc");
+// ─── Composants ──────────────────────────────────────────────────────
+import Icon from './components/Icon.jsx';
+import DataTable from './components/DataTable.jsx';
+import PatternPastille from './components/PatternPastille.jsx';
+import PatternPropTable from './components/PatternPropTable.jsx';
 
-  const sortedRows = sortKey ? [...rows].sort((a, b) => {
-    const av = a[sortKey], bv = b[sortKey];
-    if (av == null) return 1;
-    if (bv == null) return -1;
-    const cmp = String(av).localeCompare(String(bv), "fr", { numeric: true });
-    return sortDir === "asc" ? cmp : -cmp;
-  }) : rows;
-
-  const toggleSort = (key) => {
-    if (sortKey === key) setSortDir(sortDir === "asc" ? "desc" : "asc");
-    else { setSortKey(key); setSortDir("asc"); }
-  };
-
-  if (rows.length === 0) {
-    return <div style={{ fontSize: 11, color: C.faint, fontStyle: "italic", padding: "12px 10px", textAlign: "center" }}>{emptyMessage}</div>;
-  }
-
-  const padV = dense ? "4px" : "7px";
-  // Fond du conteneur = couleur des séparateurs blancs entre lignes
-  const separatorColor = C.bg;
-
-  return (
-    <div style={{ border: `1px solid ${C.border}`, borderRadius: 7, overflow: "hidden", background: separatorColor }}>
-      {/* Header */}
-      <div style={{ display: "grid", gridTemplateColumns: columns.map(c => c.width || "1fr").join(" "), background: C.alt, borderBottom: `1px solid ${C.border}` }}>
-        {columns.map(c => (
-          <div
-            key={c.key}
-            onClick={() => toggleSort(c.key)}
-            style={{
-              padding: `${padV} 10px`,
-              fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em",
-              color: C.muted, cursor: "pointer", userSelect: "none",
-              display: "flex", alignItems: "center", gap: 4,
-            }}
-          >
-            {c.label}
-            {sortKey === c.key && <span style={{ fontSize: 8 }}>{sortDir === "asc" ? "▲" : "▼"}</span>}
-          </div>
-        ))}
-      </div>
-      {/* Lignes : chaque ligne a un séparateur blanc gras en bas (sauf la dernière)
-          + une bordure latérale colorée simulée par un absolute child qui s'arrête à 3px du haut/bas */}
-      {sortedRows.map((row, i) => {
-        const borderColor = rowBorderLeft ? rowBorderLeft(row, i) : null;
-        const bg = rowBackground ? rowBackground(row, i) : (i % 2 === 1 ? C.bg : C.surface);
-        const isLast = i === sortedRows.length - 1;
-        return (
-          <div
-            key={row._key || i}
-            style={{
-              position: "relative",
-              display: "grid",
-              gridTemplateColumns: columns.map(c => c.width || "1fr").join(" "),
-              background: bg,
-              marginBottom: isLast ? 0 : 3,    // bandes blanches de 3px entre lignes (couleur du conteneur)
-            }}
-          >
-            {/* Bordure latérale colorée : un trait vertical interne, qui ne couvre pas les bandes blanches */}
-            {borderColor && borderColor !== "transparent" && (
-              <div style={{
-                position: "absolute",
-                left: 0,
-                top: 3, bottom: 3,           // retrait haut/bas pour l'effet "interrompu"
-                width: 4,
-                background: borderColor,
-                pointerEvents: "none",
-              }} />
-            )}
-            {columns.map(c => (
-              <div key={c.key} style={{ padding: `${padV} 10px`, fontSize: 11, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {c.render ? c.render(row) : (row[c.key] != null ? String(row[c.key]) : "—")}
-              </div>
-            ))}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── Pastille pour les patterns (step 3) ─────────────────────────────
-// Un disque coloré + le nom du type sous-jacent. isImport : si c'est le nœud importé,
-// bordure et couleur pleine ; sinon, couleur atténuée pour signaler "à matcher/créer".
-function PatternPastille({ type, color, isImport, big }) {
-  const size = big ? 48 : 20;
-  const dotColor = isImport ? color : lighten(color, 0.55);
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: big ? 100 : 70 }}>
-      <div style={{
-        width: size, height: size, borderRadius: "50%",
-        background: dotColor,
-        border: isImport ? `2px solid ${color}` : `1px dashed ${color}`,
-        flexShrink: 0,
-      }} />
-      <span style={{ fontSize: big ? 11 : 10, color: isImport ? color : lighten(color, 0.3), fontFamily: "'Geist', sans-serif", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.04em" }}>
-        {type}
-      </span>
-      {big && isImport && (
-        <span style={{ fontSize: 9, color: "#6b6964", fontStyle: "italic", textAlign: "center" }}>nœud importé</span>
-      )}
-    </div>
-  );
-}
-
-// ─── Table de mapping des propriétés pour un pattern Mode A ──────────
-// Reprend la grammaire du step 2 Mapping : une ligne par champ source, dropdown
-// propriété cible + transformation. Les propriétés disponibles sont lues depuis l'arbre ontologique
-// mutable via getSchemaPropsForType (avec héritage), et non plus depuis la constante SCHEMA_PROPS figée.
-// + les customProps ad hoc du pattern.
-function PatternPropTable({ pattern, sourceFields, schemaProps, onUpdate, onAskAddProp, C, F }) {
-  const allProps = [...schemaProps, ...(pattern.customProps || [])];
-
-  const updateMapping = (sourceField, patch) => {
-    const existing = pattern.propMappings.find(m => m.sourceField === sourceField);
-    let next;
-    if (patch.targetProp === "") {
-      next = pattern.propMappings.filter(m => m.sourceField !== sourceField);
-    } else if (existing) {
-      next = pattern.propMappings.map(m =>
-        m.sourceField === sourceField ? { ...m, ...patch } : m
-      );
-    } else {
-      next = [...pattern.propMappings, {
-        _key: `${sourceField}-${Date.now()}`,
-        sourceField,
-        targetProp: patch.targetProp || "",
-        transform: patch.transform || "",
-      }];
-    }
-    // Purge les dedupKeys qui ne correspondent plus à une propriété mappée
-    const remainingTargets = next.map(m => m.targetProp);
-    const nextDedup = pattern.dedupKeys.filter(k => remainingTargets.includes(k));
-    onUpdate({ propMappings: next, dedupKeys: nextDedup });
-  };
-
-  return (
-    <DataTable
-      columns={[
-        { key: "name", label: "Champ", width: "1fr" },
-        { key: "type", label: "Type", width: "0.7fr", render: r => (
-          <span style={{ fontFamily: "monospace", fontSize: 10, color: C.muted }}>{r.type}</span>
-        )},
-        { key: "example", label: "Exemple", width: "1fr", render: r => (
-          <span style={{ fontFamily: "monospace", fontSize: 10, color: C.faint }}>{r.example}</span>
-        )},
-        { key: "_targetProp", label: "Propriété du nœud créé", width: "1.4fr", render: r => {
-          const m = pattern.propMappings.find(mp => mp.sourceField === r.name);
-          return (
-            <select
-              value={m?.targetProp || ""}
-              onChange={e => {
-                if (e.target.value === "__add__") {
-                  onAskAddProp(r.name);
-                } else {
-                  updateMapping(r.name, { targetProp: e.target.value });
-                }
-              }}
-              style={{ width: "100%", padding: "5px 8px", fontSize: 11, border: `1px solid ${C.border}`, borderRadius: 5, background: C.surface, fontFamily: F.body, outline: "none" }}
-            >
-              <option value="">— Choisir une propriété —</option>
-              {allProps.map(p => (
-                <option key={p.key} value={p.key} style={{ fontWeight: p.natural_key ? 700 : 400 }}>
-                  {p.label}{p.natural_key ? " · clé naturelle" : ""}
-                </option>
-              ))}
-              <option disabled>─────────</option>
-              <option value="__add__" style={{ fontStyle: "italic", color: C.info }}>+ Ajouter une propriété…</option>
-            </select>
-          );
-        }},
-        { key: "_transform", label: "Transformation", width: "0.9fr", render: r => {
-          const m = pattern.propMappings.find(mp => mp.sourceField === r.name);
-          const enabled = !!m?.targetProp;
-          return (
-            <select
-              value={m?.transform || ""}
-              disabled={!enabled}
-              onChange={e => updateMapping(r.name, { transform: e.target.value })}
-              style={{
-                width: "100%", padding: "5px 8px", fontSize: 11,
-                border: `1px solid ${C.border}`, borderRadius: 5,
-                background: enabled ? C.surface : C.alt,
-                color: enabled ? C.text : C.faint,
-                fontFamily: F.body, outline: "none",
-                cursor: enabled ? "pointer" : "not-allowed",
-              }}
-            >
-              <option value="">(aucune)</option>
-              <option value="trim">trim</option>
-              <option value="uppercase">uppercase</option>
-              <option value="lowercase">lowercase</option>
-              <option value="cast_int">cast integer</option>
-              <option value="cast_float">cast float</option>
-            </select>
-          );
-        }},
-      ]}
-      rows={sourceFields}
-      dense
-    />
-  );
-}
-
+// ─── ANCIEN BLOC — supprimé, voir components/ ───────────────────────
+// DataTable, Icon, PatternPastille, PatternPropTable extraits.
+// Le code ci-dessous commence directement à export default function App()
+// ─────────────────────────────────────────────────────────────────────
 export default function App() {
   const [page, setPage] = useState("login");
   const [section, setSection] = useState("territoires"); // territoires | donnees
@@ -5079,7 +4877,6 @@ export default function App() {
                                                 sourceFields={stepperDraft.exposedFields.filter(f => f.type !== "geometry")}
                                                 schemaProps={getSchemaPropsForType(p.otherNodeType)}
                                                 onUpdate={patch => updatePattern(p.id, patch)}
-                                                C={C} F={F}
                                                 onAskAddProp={(sourceField) => {
                                                   setAddPropModal({ forSourceField: sourceField, forPatternId: p.id, forNodeType: p.otherNodeType });
                                                   setAddPropDraft({
