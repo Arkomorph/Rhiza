@@ -2161,19 +2161,9 @@ export default function App() {
 
                   return (
                     <div style={{ marginBottom: 12, padding: "10px 12px", background: C.alt, borderRadius: 6 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <label style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, fontFamily: F.body }}>
-                          Valeurs admissibles · {values.length}
-                        </label>
-                        <span
-                          onClick={() => setDraft({ _addingNomenclature: !isAddingNomenclature, _newNomenclatureName: "" })}
-                          style={{ fontSize: 9, padding: "3px 8px", border: `1px solid ${isAddingNomenclature ? C.edit : C.border}`, color: isAddingNomenclature ? C.edit : C.muted, background: isAddingNomenclature ? C.editL : "transparent", borderRadius: 4, cursor: "pointer", fontFamily: F.body, display: "inline-flex", alignItems: "center", gap: 4 }}
-                          title="Ajouter une colonne pour une nomenclature externe"
-                        >
-                          <Icon name="plusCircle" size={10} color={isAddingNomenclature ? C.edit : C.muted} />
-                          <span>Nomenclature</span>
-                        </span>
-                      </div>
+                      <label style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, fontFamily: F.body, marginBottom: 8, display: "block" }}>
+                        Valeurs admissibles · {values.length}
+                      </label>
 
                       {/* Zone d'input pour saisir le nom d'une nouvelle nomenclature */}
                       {isAddingNomenclature && (
@@ -2204,13 +2194,9 @@ export default function App() {
                         </div>
                       )}
 
-                      {values.length === 0 ? (
-                        <div style={{ fontSize: 10, color: C.faint, fontStyle: "italic", padding: "10px 4px", textAlign: "center" }}>
-                          Aucune valeur définie. Cliquer « + Valeur » pour commencer.
-                        </div>
-                      ) : (() => {
-                        // Grille dynamique : code + libellé + (1 colonne par nomenclature) + ✕
-                        const gridTemplate = `1fr 1.4fr ${nomenclatures.map(() => "0.8fr").join(" ")} 28px`;
+                      {(() => {
+                        // Grille dynamique : code + libellé + (1 colonne par nomenclature) + colonne +Nomenclature + ✕
+                        const gridTemplate = `1fr 1.4fr ${nomenclatures.map(() => "0.8fr").join(" ")} 0.8fr 28px`;
                         return (
                           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 5, overflow: "auto" }}>
                             {/* En-tête de table */}
@@ -2242,7 +2228,7 @@ export default function App() {
                                         onClick={() => removeNomenclature(nomKey)}
                                         style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", padding: 1, borderRadius: 3 }}
                                         title={`Retirer la colonne ${nomKey}`}
-                                        onMouseEnter={e => e.currentTarget.style.background = "#fef2f2"}
+                                        onMouseEnter={e => e.currentTarget.style.background = C.errorL}
                                         onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                                       >
                                         <Icon name="x" size={9} color={C.faint} />
@@ -2251,9 +2237,17 @@ export default function App() {
                                   </span>
                                 );
                               })}
+                              {/* Colonne + Nomenclature */}
+                              <span
+                                onClick={() => setDraft({ _addingNomenclature: !isAddingNomenclature, _newNomenclatureName: "" })}
+                                style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 3, color: C.edit }}
+                                title="Ajouter une nomenclature"
+                              >
+                                <Icon name="plusCircle" size={11} color={C.edit} />
+                              </span>
                               <span></span>
                             </div>
-                            {/* Lignes */}
+                            {/* Lignes de données */}
                             {values.map((v, i) => (
                               <div key={i} style={{ display: "grid", gridTemplateColumns: gridTemplate, gap: 6, padding: "4px 6px", borderTop: i > 0 ? `1px solid ${C.blight}` : "none", alignItems: "center" }}>
                                 <input
@@ -2280,31 +2274,31 @@ export default function App() {
                                     style={{ padding: "4px 6px", fontSize: 10, fontFamily: "'JetBrains Mono', monospace", border: `1px solid ${C.border}`, borderRadius: 4, outline: "none", boxSizing: "border-box", background: C.surface, width: "100%" }}
                                   />
                                 ))}
+                                <span></span>
                                 <span
                                   onClick={() => removeValueAt(i)}
                                   style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 2, borderRadius: 3 }}
                                   title="Supprimer cette ligne"
-                                  onMouseEnter={e => e.currentTarget.style.background = "#fef2f2"}
+                                  onMouseEnter={e => e.currentTarget.style.background = C.errorL}
                                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                                 >
                                   <Icon name="trash" size={11} color={C.error} />
                                 </span>
                               </div>
                             ))}
+                            {/* Ligne + Valeur (dernière ligne de la table) */}
+                            <div style={{ display: "grid", gridTemplateColumns: gridTemplate, gap: 6, padding: "4px 6px", borderTop: `1px solid ${C.blight}`, alignItems: "center" }}>
+                              <span
+                                onClick={addValue}
+                                style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 3, color: C.edit, gridColumn: "1 / 3" }}
+                                title="Ajouter une valeur"
+                              >
+                                <Icon name="plusCircle" size={11} color={C.edit} />
+                              </span>
+                            </div>
                           </div>
                         );
                       })()}
-
-                      {/* Bouton + Valeur */}
-                      <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-start" }}>
-                        <span
-                          onClick={addValue}
-                          style={{ fontSize: 9, padding: "4px 10px", background: C.editL, color: C.edit, border: `1px solid ${C.edit}`, borderRadius: 4, cursor: "pointer", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: F.body, display: "inline-flex", alignItems: "center", gap: 5 }}
-                        >
-                          <Icon name="plusCircle" size={10} color={C.edit} />
-                          <span>Valeur</span>
-                        </span>
-                      </div>
 
                       {/* Source de nomenclature globale */}
                       <label style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, fontFamily: F.body, marginTop: 12, display: "block" }}>Source de référence (optionnel)</label>
