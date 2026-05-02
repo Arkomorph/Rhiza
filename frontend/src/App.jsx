@@ -29,6 +29,7 @@ import DataTable from './components/DataTable.jsx';
 import PatternPastille from './components/PatternPastille.jsx';
 import PatternPropTable from './components/PatternPropTable.jsx';
 import ArchiveModal from './components/ArchiveModal.jsx';
+import AddSourceModal from './components/AddSourceModal.jsx';
 
 // ─── Sections ───────────────────────────────────────────────────────
 import LoginPage from './sections/LoginPage.jsx';
@@ -3130,64 +3131,10 @@ export default function App() {
 
       {/* ═══ MODALE — Ajout d'une source custom ═══ */}
       {addSourceModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 110 }}>
-          <div style={{ width: 420, background: C.surface, borderRadius: 14, padding: "28px 32px", boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 600, fontFamily: F.title, textTransform: "uppercase" }}>Ajouter une source</div>
-                <div style={{ fontSize: 11, color: C.faint, marginTop: 2 }}>Elle sera ajoutée au catalogue et liée au nœud</div>
-              </div>
-              <span onClick={() => { setAddSourceModal(null); setNewSource({ nom: "", format: "WFS", portail: "" }); }} style={{ fontSize: 14, cursor: "pointer", color: C.muted }}>✕</span>
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, marginBottom: 4 }}>Nom</div>
-              <input
-                autoFocus
-                value={newSource.nom}
-                onChange={e => setNewSource({ ...newSource, nom: e.target.value })}
-                placeholder="ex : Relevé terrain Musy 2026"
-                style={{ width: "100%", padding: "10px 14px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, outline: "none", boxSizing: "border-box", fontFamily: F.body }}
-              />
-            </div>
-
-            <div style={{ marginBottom: 12, display: "flex", gap: 12 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, marginBottom: 4 }}>Format</div>
-                <select
-                  value={newSource.format}
-                  onChange={e => setNewSource({ ...newSource, format: e.target.value })}
-                  style={{ width: "100%", padding: "10px 14px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, outline: "none", boxSizing: "border-box", fontFamily: F.body, background: C.surface }}
-                >
-                  {["WFS", "GeoJSON", "CSV", "Shapefile", "GeoPackage", "INTERLIS", "Autre"].map(f => <option key={f} value={f}>{f}</option>)}
-                </select>
-              </div>
-              <div style={{ flex: 1.5 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, marginBottom: 4 }}>Portail</div>
-                <input
-                  value={newSource.portail}
-                  onChange={e => setNewSource({ ...newSource, portail: e.target.value })}
-                  placeholder="ex : geo.fr.ch, manuel, interne..."
-                  style={{ width: "100%", padding: "10px 14px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, outline: "none", boxSizing: "border-box", fontFamily: F.body }}
-                />
-              </div>
-            </div>
-
-            <div style={{ fontSize: 10, color: C.faint, background: C.infoL, padding: "8px 10px", borderRadius: 5, marginBottom: 16, lineHeight: 1.6 }}>
-              <span style={{ fontWeight: 700, color: C.info }}>PostgreSQL</span> : 1 ligne dans <code style={{ fontSize: 10, background: "rgba(43,90,138,0.08)", padding: "1px 4px", borderRadius: 2, color: C.info }}>catalogue_sources</code>
-              <br /><span style={{ fontWeight: 700, color: C.accent }}>Lien</span> : ajoutée aux sources de {nodes.find(n => n.id === addSourceModal.nodeId)?.nom}
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button onClick={() => { setAddSourceModal(null); setNewSource({ nom: "", format: "WFS", portail: "" }); }} style={{ fontSize: 12, padding: "8px 16px", border: `1px solid ${C.border}`, borderRadius: 7, background: C.surface, color: C.muted, cursor: "pointer", fontFamily: F.body }}>Annuler</button>
-              <button
-                onClick={commitAddSource}
-                disabled={!newSource.nom.trim()}
-                style={{ fontSize: 12, padding: "8px 20px", border: "none", borderRadius: 7, background: newSource.nom.trim() ? C.accent : C.border, color: newSource.nom.trim() ? "#fff" : C.faint, cursor: newSource.nom.trim() ? "pointer" : "default", fontWeight: 600, fontFamily: F.body }}
-              >Ajouter & lier</button>
-            </div>
-          </div>
-        </div>
+        <AddSourceModal
+          addSourceModal={addSourceModal} newSource={newSource} setNewSource={setNewSource} nodes={nodes}
+          onClose={() => setAddSourceModal(null)} onConfirm={commitAddSource}
+        />
       )}
 
       {/* ═══ MODALE — Stepper source (Source → Mapping → Patterns) ═══ */}
