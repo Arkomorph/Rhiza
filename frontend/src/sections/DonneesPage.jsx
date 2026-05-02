@@ -109,19 +109,19 @@ export default function DonneesPage({
                 }}
                 title={canExecute ? "Exécuter l'import" : "Configure d'abord la source (source + mapping + patterns)"}
               >▶</span>
-              {execs.length > 0 && (
-                <span
-                  onClick={() => setExpandedHistory(prev => ({ ...prev, [s.id]: !prev[s.id] }))}
-                  style={{ width: 20, textAlign: "center", fontSize: 11, color: C.faint, cursor: "pointer", flexShrink: 0 }}
-                  title={isExpanded ? "Masquer l'historique" : "Voir l'historique"}
-                >{isExpanded ? "▾" : "▸"}</span>
-              )}
               <span onClick={() => openSourceStepperEdit(s.id)} style={{ width: 24, textAlign: "center", cursor: "pointer", flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} title="Configurer">
                 <Icon name="pencil" size={14} color={C.edit} />
               </span>
               <span style={{ width: 24, textAlign: "center", cursor: "pointer", flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} title="Supprimer">
-                <Icon name="trash" size={14} color={C.edit} />
+                <Icon name="trash" size={14} color={C.error} />
               </span>
+              {execs.length > 0 && (
+                <span
+                  onClick={() => setExpandedHistory(prev => ({ ...prev, [s.id]: !prev[s.id] }))}
+                  style={{ width: 24, textAlign: "center", cursor: "pointer", flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                  title={isExpanded ? "Masquer l'historique" : "Voir l'historique"}
+                ><Icon name={isExpanded ? "caretDown" : "caretRight"} size={14} color={C.faint} /></span>
+              )}
             </div>
 
             {/* Historique déplié */}
