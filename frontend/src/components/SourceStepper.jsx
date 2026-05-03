@@ -61,7 +61,7 @@ export default function SourceStepper({
               {sourceStepper.mode === "create" ? "Création · Source → Mapping → Patterns" : `Édition · ${stepperDraft.format}`}
             </div>
           </div>
-          <span onClick={() => { setSourceStepper(null); setStepperDraft(null); }} style={{ fontSize: 14, cursor: "pointer", color: C.muted }}>✕</span>
+          <span onClick={() => { setSourceStepper(null); setStepperDraft(null); }} style={{ cursor: "pointer", display: "inline-flex", padding: 2 }}><Icon name="x" size={16} color={C.muted} /></span>
         </div>
 
         {/* Stepper navigation */}
