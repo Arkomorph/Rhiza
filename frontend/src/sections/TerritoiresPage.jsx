@@ -1,5 +1,7 @@
 // ─── Section Territoires — arbre hiérarchique ───────────────────────
-import React from 'react';
+// Possède l'état d'édition inline (editingId, editingName).
+// Remonte les renommages vers App via onNodeRenamed(nodeId, newName).
+import React, { useState } from 'react';
 import { C, F, KIND_LEVEL } from '../config/theme.js';
 import { TC } from '../config/palettes.js';
 import { TYPES, ROOT } from '../config/constants.js';
@@ -8,10 +10,36 @@ import TreeNode from '../components/TreeNode.jsx';
 
 export default function TerritoiresPage({
   treeRef, lines, nodes,
-  editingId, editingName, setEditingName,
-  onStartEdit, onCommitEdit, onCancelEdit,
-  onEdit, onArchive, onCreateChild,
+  onNodeRenamed, onEdit, onArchive, onCreateChild,
 }) {
+  const [editingId, setEditingId] = useState(null);
+  const [editingName, setEditingName] = useState("");
+
+  const startEdit = (node) => {
+    if (node.permanent) return;
+    setEditingId(node.id);
+    setEditingName(node.placeholder ? "" : node.nom);
+  };
+
+  const commitEdit = () => {
+    if (!editingId) return;
+    const name = editingName.trim();
+    const node = nodes.find(n => n.id === editingId);
+    if (!name || (!node.placeholder && node.nom === name)) {
+      setEditingId(null);
+      setEditingName("");
+      return;
+    }
+    onNodeRenamed(editingId, name, !!node.placeholder);
+    setEditingId(null);
+    setEditingName("");
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingName("");
+  };
+
   return (
     <div ref={treeRef} style={{ maxWidth: 800, margin: "0 auto", padding: "28px 24px", position: "relative" }}>
       {/* Arbre de lignes SVG — raccorde les pastilles parent → enfant */}
@@ -40,7 +68,7 @@ export default function TerritoiresPage({
         <TreeNode
           node={ROOT} depth={0} nodes={nodes}
           editingId={editingId} editingName={editingName} setEditingName={setEditingName}
-          onStartEdit={onStartEdit} onCommitEdit={onCommitEdit} onCancelEdit={onCancelEdit}
+          onStartEdit={startEdit} onCommitEdit={commitEdit} onCancelEdit={cancelEdit}
           onEdit={onEdit} onArchive={onArchive} onCreateChild={onCreateChild}
         />
       </div>

@@ -51,8 +51,6 @@ export default function App() {
   const [sourceFilter, setSourceFilter] = useState("");
   const [lines, setLines] = useState([]);
   const treeRef = useRef(null);
-  const [editingId, setEditingId] = useState(null);
-  const [editingName, setEditingName] = useState("");
   const [archiveModal, setArchiveModal] = useState(null); // { nodeId }
   const [archiveLines, setArchiveLines] = useState([]);
   const archiveTreeRef = useRef(null);
@@ -118,34 +116,12 @@ export default function App() {
   const [addPropModal, setAddPropModal] = useState(null); // { forSourceField } — modale d'ajout ad hoc (mock parcours 5)
   const [addPropDraft, setAddPropDraft] = useState({ key: "", label: "", type: "string" });
 
-  // ─── Édition inline du nom d'un nœud ───────────────────────────────
-  const startEdit = (node) => {
-    if (node.permanent) return;
-    setEditingId(node.id);
-    setEditingName(node.placeholder ? "" : node.nom);
-  };
-
-  const commitEdit = () => {
-    if (!editingId) return;
-    const name = editingName.trim();
-    const node = nodes.find(n => n.id === editingId);
-    // Texte vide ou inchangé → abandon
-    if (!name || (!node.placeholder && node.nom === name)) {
-      setEditingId(null);
-      setEditingName("");
-      return;
-    }
-    setNodes(nodes.map(n => n.id === editingId
-      ? { ...n, nom: name, placeholder: false, status: n.placeholder ? "draft" : n.status }
+  // ─── Renommage d'un nœud (callback de TerritoiresPage) ──────────────
+  const handleNodeRenamed = (nodeId, newName, wasPlaceholder) => {
+    setNodes(nodes.map(n => n.id === nodeId
+      ? { ...n, nom: newName, placeholder: false, status: wasPlaceholder ? "draft" : n.status }
       : n
     ));
-    setEditingId(null);
-    setEditingName("");
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditingName("");
   };
 
   // ─── Archivage : collecte des descendants récursivement ───────────
@@ -592,8 +568,7 @@ export default function App() {
       {section === "territoires" && (
         <TerritoiresPage
           treeRef={treeRef} lines={lines} nodes={nodes}
-          editingId={editingId} editingName={editingName} setEditingName={setEditingName}
-          onStartEdit={startEdit} onCommitEdit={commitEdit} onCancelEdit={cancelEdit}
+          onNodeRenamed={handleNodeRenamed}
           onEdit={(node) => { setCreateModal({ mode: "edit", tab: "identite", type: node.type, parentId: node.parentId, nodeId: node.id }); setCreateName(node.placeholder ? "" : node.nom); }}
           onArchive={(nodeId) => setArchiveModal({ nodeId })}
           onCreateChild={(type, parentId) => { setCreateModal({ mode: "create", tab: "identite", type, parentId }); setCreateName(""); }}
