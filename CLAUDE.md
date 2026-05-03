@@ -70,3 +70,17 @@ Référence : schema/musy_96.cypher
 - Pas un SIG
 - Pas un outil de collecte de données
 - Pas un système déductif ou inductif — abductif
+
+## Agent skills
+
+### Issue tracker
+
+Local markdown in `.scratch/issues/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Standard defaults (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context. `CONTEXT.md` at root, ADRs in `docs/adr/`. See `docs/agents/domain.md`.
