@@ -2,8 +2,8 @@
 import React from 'react';
 import { C, F } from '../config/theme.js';
 import { getEffectiveProps, treeUpdateProp, treeAddProp } from '../helpers/ontology.js';
-import { normEnumValues } from '../helpers/enum.js';
 import Icon from './Icon.jsx';
+import EnumValueEditor from './EnumValueEditor.jsx';
 
 export default function IntrinsicPropModal({
   intrinsicPropModal, setIntrinsicPropModal,
@@ -114,31 +114,15 @@ export default function IntrinsicPropModal({
             </div>
           </div>
 
+
           {/* Champs conditionnels enum */}
           {draft.type === "enum" && (() => {
-            const values = normEnumValues(draft.enum_values || []);
-            const setValues = (newValues) => setDraft({ enum_values: newValues });
             const allNomenclatures = Array.from(new Set(
-              values.flatMap(v => Object.keys(v.code_externe || {}))
+              (draft.enum_values || []).flatMap(v => Object.keys((typeof v === 'object' ? v : {}).code_externe || {}))
             ));
             const declaredNomenclatures = draft._declaredNomenclatures || [];
-            const nomenclatures = Array.from(new Set([...allNomenclatures, ...declaredNomenclatures]));
+            const nomItems = Array.from(new Set([...allNomenclatures, ...declaredNomenclatures]));
 
-            const updateValueAt = (idx, patch) => {
-              const next = values.slice();
-              next[idx] = { ...next[idx], ...patch };
-              setValues(next);
-            };
-            const updateCodeExterne = (idx, nomKey, code) => {
-              const next = values.slice();
-              const existingExt = { ...(next[idx].code_externe || {}) };
-              if (code === "" || code === undefined) delete existingExt[nomKey];
-              else existingExt[nomKey] = code;
-              next[idx] = { ...next[idx], code_externe: existingExt };
-              setValues(next);
-            };
-            const removeValueAt = (idx) => setValues(values.filter((_, i) => i !== idx));
-            const addValue = () => setValues([...values, { value: "", label: "", code_externe: {} }]);
             const addNomenclature = (name) => {
               if (!name) return;
               const cleaned = name.trim().toLowerCase().replace(/\s+/g, "_");
@@ -150,8 +134,10 @@ export default function IntrinsicPropModal({
               });
             };
             const removeNomenclature = (nomKey) => {
-              const hasData = values.some(v => (v.code_externe || {})[nomKey]);
+              const values = draft.enum_values || [];
+              const hasData = values.some(v => (typeof v === 'object' ? v : {}).code_externe?.[nomKey]);
               const newValues = values.map(v => {
+                if (typeof v !== 'object') return v;
                 const ext = { ...(v.code_externe || {}) };
                 delete ext[nomKey];
                 return { ...v, code_externe: ext };
@@ -167,123 +153,37 @@ export default function IntrinsicPropModal({
               }
               setDraft({ enum_values: newValues, _declaredNomenclatures: newDeclared, _pendingNomenclatureRemoval: null });
             };
-            const isAddingNomenclature = !!draft._addingNomenclature;
 
             return (
-              <div style={{ marginBottom: 12, padding: "10px 12px", background: C.alt, borderRadius: 6 }}>
-                <label style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, fontFamily: F.body, marginBottom: 8, display: "block" }}>
-                  Valeurs admissibles · {values.length}
-                </label>
-
-                {isAddingNomenclature && (
-                  <div style={{ marginBottom: 8, padding: "8px 10px", background: C.editL, border: `1px solid ${C.edit}`, borderRadius: 5, display: "flex", gap: 6, alignItems: "center" }}>
-                    <input
-                      type="text"
-                      autoFocus
-                      value={draft._newNomenclatureName || ""}
-                      onChange={e => setDraft({ _newNomenclatureName: e.target.value })}
-                      onKeyDown={e => {
-                        if (e.key === "Enter") addNomenclature(draft._newNomenclatureName);
-                        if (e.key === "Escape") setDraft({ _addingNomenclature: false, _newNomenclatureName: "" });
-                      }}
-                      placeholder="regbl, rc_ofs, noga_2008…"
-                      style={{ flex: 1, padding: "5px 8px", fontSize: 10, fontFamily: "'JetBrains Mono', monospace", border: `1px solid ${C.border}`, borderRadius: 4, outline: "none", background: C.surface }}
-                    />
-                    <span
-                      onClick={() => addNomenclature(draft._newNomenclatureName)}
-                      style={{ fontSize: 9, padding: "5px 10px", background: draft._newNomenclatureName ? C.edit : C.alt, color: draft._newNomenclatureName ? C.surface : C.faint, border: `1px solid ${draft._newNomenclatureName ? C.edit : C.border}`, borderRadius: 4, cursor: draft._newNomenclatureName ? "pointer" : "not-allowed", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: F.body }}
-                    >Ajouter</span>
-                    <span
-                      onClick={() => setDraft({ _addingNomenclature: false, _newNomenclatureName: "" })}
-                      style={{ cursor: "pointer", display: "inline-flex", padding: 4 }}
-                      title="Annuler"
-                    >
-                      <Icon name="x" size={12} color={C.muted} />
-                    </span>
-                  </div>
-                )}
-
-                {(() => {
-                  const gridTemplate = `1fr 1.4fr ${nomenclatures.map(() => "0.8fr").join(" ")} 0.8fr 28px`;
-                  return (
-                    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 5, overflow: "auto" }}>
-                      <div style={{ display: "grid", gridTemplateColumns: gridTemplate, gap: 6, background: C.bg, padding: "5px 8px", fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: C.muted, alignItems: "center", borderBottom: `1px solid ${C.border}` }}>
-                        <span>Code stocké</span>
-                        <span>Libellé</span>
-                        {nomenclatures.map(nomKey => {
-                          const isPending = draft._pendingNomenclatureRemoval === nomKey;
-                          return (
-                            <span key={nomKey} style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "space-between" }}>
-                              <span style={{ fontFamily: "'JetBrains Mono', monospace", textTransform: "lowercase", letterSpacing: 0, color: isPending ? C.error : C.info }}>{nomKey}</span>
-                              {isPending ? (
-                                <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
-                                  <span
-                                    onClick={(e) => { e.stopPropagation(); removeNomenclature(nomKey); }}
-                                    style={{ fontSize: 9, padding: "1px 5px", background: C.error, color: C.surface, borderRadius: 3, cursor: "pointer", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}
-                                    title="Confirmer la suppression"
-                                  >Supprimer</span>
-                                  <span
-                                    onClick={(e) => { e.stopPropagation(); setDraft({ _pendingNomenclatureRemoval: null }); }}
-                                    style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", padding: 1, borderRadius: 3 }}
-                                    title="Annuler"
-                                  >
-                                    <Icon name="x" size={10} color={C.muted} />
-                                  </span>
-                                </span>
-                              ) : (
-                                <span
-                                  onClick={() => removeNomenclature(nomKey)}
-                                  style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", padding: 1, borderRadius: 3 }}
-                                  title={`Retirer la colonne ${nomKey}`}
-                                  onMouseEnter={e => e.currentTarget.style.background = C.errorL}
-                                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                                >
-                                  <Icon name="x" size={9} color={C.faint} />
-                                </span>
-                              )}
-                            </span>
-                          );
-                        })}
-                        <span
-                          onClick={() => setDraft({ _addingNomenclature: !isAddingNomenclature, _newNomenclatureName: "" })}
-                          style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 3, color: C.edit }}
-                          title="Ajouter une nomenclature"
-                        >
-                          <Icon name="plusCircle" size={11} color={C.edit} />
-                        </span>
-                        <span></span>
-                      </div>
-                      {values.map((v, i) => (
-                        <div key={i} style={{ display: "grid", gridTemplateColumns: gridTemplate, gap: 6, padding: "4px 6px", borderTop: i > 0 ? `1px solid ${C.blight}` : "none", alignItems: "center" }}>
-                          <input type="text" value={v.value} onChange={e => updateValueAt(i, { value: e.target.value })} placeholder="8011" style={{ padding: "4px 6px", fontSize: 10, fontFamily: "'JetBrains Mono', monospace", border: `1px solid ${C.border}`, borderRadius: 4, outline: "none", boxSizing: "border-box", background: C.surface, width: "100%" }} />
-                          <input type="text" value={v.label} onChange={e => updateValueAt(i, { label: e.target.value })} placeholder="Avant 1919" style={{ padding: "4px 6px", fontSize: 10, fontFamily: F.body, border: `1px solid ${C.border}`, borderRadius: 4, outline: "none", boxSizing: "border-box", background: C.surface, width: "100%" }} />
-                          {nomenclatures.map(nomKey => (
-                            <input key={nomKey} type="text" value={(v.code_externe || {})[nomKey] || ""} onChange={e => updateCodeExterne(i, nomKey, e.target.value)} placeholder="—" style={{ padding: "4px 6px", fontSize: 10, fontFamily: "'JetBrains Mono', monospace", border: `1px solid ${C.border}`, borderRadius: 4, outline: "none", boxSizing: "border-box", background: C.surface, width: "100%" }} />
-                          ))}
-                          <span></span>
-                          <span onClick={() => removeValueAt(i)} style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 2, borderRadius: 3 }} title="Supprimer cette ligne" onMouseEnter={e => e.currentTarget.style.background = C.errorL} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                            <Icon name="trash" size={11} color={C.error} />
-                          </span>
-                        </div>
-                      ))}
-                      <div style={{ display: "grid", gridTemplateColumns: gridTemplate, gap: 6, padding: "4px 6px", borderTop: `1px solid ${C.blight}`, alignItems: "center" }}>
-                        <span onClick={addValue} style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 3, color: C.edit, gridColumn: "1 / 3" }} title="Ajouter une valeur">
-                          <Icon name="plusCircle" size={11} color={C.edit} />
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                <label style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, fontFamily: F.body, marginTop: 12, display: "block" }}>Source de référence (optionnel)</label>
-                <input
-                  type="text"
-                  value={draft.enum_source || ""}
-                  onChange={e => setDraft({ enum_source: e.target.value })}
-                  placeholder="CECB, OFS STATPOP, RegBL, RC OFS, etc."
-                  style={{ width: "100%", padding: "6px 10px", marginTop: 4, fontSize: 11, fontFamily: F.body, border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box", background: C.surface }}
+              <>
+                <EnumValueEditor
+                  values={draft.enum_values}
+                  onChange={(newValues) => setDraft({ enum_values: newValues })}
+                  nomenclatures={{
+                    items: nomItems,
+                    draft: {
+                      adding: !!draft._addingNomenclature,
+                      name: draft._newNomenclatureName || "",
+                      onChangeName: (v) => setDraft({ _newNomenclatureName: v }),
+                    },
+                    onAdd: addNomenclature,
+                    onRemove: removeNomenclature,
+                    onToggleAdding: (v) => setDraft({ _addingNomenclature: v, _newNomenclatureName: "" }),
+                    pendingRemoval: draft._pendingNomenclatureRemoval,
+                    onClearPending: () => setDraft({ _pendingNomenclatureRemoval: null }),
+                  }}
                 />
-              </div>
+                <div style={{ marginTop: -4, marginBottom: 12, padding: "0 12px" }}>
+                  <label style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, fontFamily: F.body, display: "block" }}>Source de référence (optionnel)</label>
+                  <input
+                    type="text"
+                    value={draft.enum_source || ""}
+                    onChange={e => setDraft({ enum_source: e.target.value })}
+                    placeholder="CECB, OFS STATPOP, RegBL, RC OFS, etc."
+                    style={{ width: "100%", padding: "6px 10px", marginTop: 4, fontSize: 11, fontFamily: F.body, border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box", background: C.surface }}
+                  />
+                </div>
+              </>
             );
           })()}
 

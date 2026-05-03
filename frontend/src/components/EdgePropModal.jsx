@@ -1,8 +1,8 @@
 // ─── Modale édition propriété spécifique d'arête ─────────────────────
 import React from 'react';
 import { C, F } from '../config/theme.js';
-import { normEnumValues } from '../helpers/enum.js';
 import Icon from './Icon.jsx';
+import EnumValueEditor from './EnumValueEditor.jsx';
 
 export default function EdgePropModal({
   edgePropModal, setEdgePropModal,
@@ -109,76 +109,12 @@ export default function EdgePropModal({
             </div>
           </div>
 
-          {draft.type === "enum" && (() => {
-            const values = normEnumValues(draft.enum_values || []);
-            const setValues = (newValues) => setDraft({ enum_values: newValues });
-            const updateValueAt = (idx, patch) => {
-              const next = values.slice();
-              next[idx] = { ...next[idx], ...patch };
-              setValues(next);
-            };
-            const removeValueAt = (idx) => setValues(values.filter((_, i) => i !== idx));
-            const addValue = () => setValues([...values, { value: "", label: "", code_externe: {} }]);
-
-            return (
-              <div style={{ marginBottom: 12, padding: "10px 12px", background: C.alt, borderRadius: 6 }}>
-                <label style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, fontFamily: F.body, marginBottom: 6, display: "block" }}>
-                  Valeurs admissibles · {values.length}
-                </label>
-
-                {values.length === 0 ? (
-                  <div style={{ fontSize: 10, color: C.faint, fontStyle: "italic", padding: "10px 4px", textAlign: "center" }}>
-                    Aucune valeur définie. Cliquer « + Valeur » pour commencer.
-                  </div>
-                ) : (
-                  <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 5, overflow: "hidden" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr 28px", gap: 1, background: C.bg, padding: "5px 8px", fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: C.muted }}>
-                      <span>Code stocké</span>
-                      <span>Libellé</span>
-                      <span></span>
-                    </div>
-                    {values.map((v, i) => (
-                      <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr 28px", gap: 6, padding: "4px 6px", borderTop: i > 0 ? `1px solid ${C.blight}` : "none", alignItems: "center" }}>
-                        <input
-                          type="text"
-                          value={v.value}
-                          onChange={e => updateValueAt(i, { value: e.target.value })}
-                          placeholder="ppe"
-                          style={{ padding: "4px 6px", fontSize: 10, fontFamily: "'JetBrains Mono', monospace", border: `1px solid ${C.border}`, borderRadius: 4, outline: "none", boxSizing: "border-box", background: C.surface, width: "100%" }}
-                        />
-                        <input
-                          type="text"
-                          value={v.label}
-                          onChange={e => updateValueAt(i, { label: e.target.value })}
-                          placeholder="Propriété par étages"
-                          style={{ padding: "4px 6px", fontSize: 10, fontFamily: F.body, border: `1px solid ${C.border}`, borderRadius: 4, outline: "none", boxSizing: "border-box", background: C.surface, width: "100%" }}
-                        />
-                        <span
-                          onClick={() => removeValueAt(i)}
-                          style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 2, borderRadius: 3 }}
-                          title="Supprimer cette valeur"
-                          onMouseEnter={e => e.currentTarget.style.background = "#fef2f2"}
-                          onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                        >
-                          <Icon name="trash" size={11} color={C.error} />
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div style={{ marginTop: 8 }}>
-                  <span
-                    onClick={addValue}
-                    style={{ fontSize: 9, padding: "4px 10px", background: C.editL, color: C.edit, border: `1px solid ${C.edit}`, borderRadius: 4, cursor: "pointer", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: F.body, display: "inline-flex", alignItems: "center", gap: 5 }}
-                  >
-                    <Icon name="plusCircle" size={10} color={C.edit} />
-                    <span>Valeur</span>
-                  </span>
-                </div>
-              </div>
-            );
-          })()}
+          {draft.type === "enum" && (
+            <EnumValueEditor
+              values={draft.enum_values}
+              onChange={(newValues) => setDraft({ enum_values: newValues })}
+            />
+          )}
 
           <div style={{ marginBottom: 4 }}>
             <label style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, fontFamily: F.body }}>Notes</label>
