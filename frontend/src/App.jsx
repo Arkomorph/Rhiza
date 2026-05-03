@@ -3,8 +3,8 @@ import React, { useState, useRef, useLayoutEffect } from "react";
 // ─── Config & données ────────────────────────────────────────────────
 import { C, F, KIND_LEVEL } from './config/theme.js';
 import { TC, AC_PALETTE } from './config/palettes.js';
-import { TYPES, CHILDREN_OF, ROOT, INDENT, CASCADE_OFFSET, ONTOLOGY_GROUPS, ONTOLOGY_TYPES } from './config/constants.js';
-import { CATALOG, SCHEMA_PROPS } from './data/catalog.js';
+import { TYPES, CHILDREN_OF, ROOT, INDENT, CASCADE_OFFSET } from './config/constants.js';
+import { CATALOG } from './data/catalog.js';
 import { INITIAL_EDGE_TYPES } from './data/edge-types.js';
 import { INITIAL_ONTOLOGY_TREE } from './data/ontology.js';
 import { initialDerivedProps } from './data/derived-props.js';
@@ -73,9 +73,7 @@ export default function App() {
   // Vue à plat de l'arbre — recalculée à chaque mutation
   const ontologyFlat = flattenOntology(ontologyTree);
 
-  // Liste tous les types/sous-types de l'arbre groupés par famille (Territoire, Acteur, Flux, Décision),
-  // avec leur profondeur dans la hiérarchie pour permettre l'indentation visuelle dans les <select>.
-  // Remplace l'usage de la constante figée ONTOLOGY_GROUPS qui ne contenait que les racines.
+  // Types/sous-types groupés par famille, avec profondeur pour indentation dans les <select>.
   const ontologyTypesGrouped = (() => {
     const groups = [];
     for (const [rootKey, rootNode] of Object.entries(ontologyTree)) {
@@ -92,9 +90,7 @@ export default function App() {
     return groups;
   })();
 
-  // Lit les propriétés effectives (avec héritage) d'un type donné depuis l'arbre ontologique mutable.
-  // Remplace l'usage de SCHEMA_PROPS figé en dur — garantit que les modifications du parcours 5
-  // sont visibles dans le mapping (parcours 2 Step 2) et dans les patterns (parcours 2 Step 3).
+  // Propriétés effectives (avec héritage) d'un type donné depuis l'arbre ontologique mutable.
   const getSchemaPropsForType = (type) => {
     if (!type) return [];
     const path = findPathForType(ontologyTree, type);

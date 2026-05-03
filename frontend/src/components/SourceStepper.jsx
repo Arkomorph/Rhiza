@@ -2,7 +2,7 @@ import React from 'react';
 import { C, F } from '../config/theme.js';
 import { TC } from '../config/palettes.js';
 import { ROOT } from '../config/constants.js';
-import { CATALOG, SCHEMA_PROPS } from '../data/catalog.js';
+import { CATALOG } from '../data/catalog.js';
 import { SPATIAL_OPS, compatibleSpatialOps } from '../data/edge-types.js';
 import { lighten, colorForOntologyPath } from '../helpers/colors.js';
 import { getEffectiveExpectations } from '../helpers/ontology.js';
@@ -971,11 +971,7 @@ export default function SourceStepper({
             // Confiance par défaut selon le mode
             const defaultConfidence = (mode) => mode === "linkOrCreateField" ? "medium" : "low";
 
-            // Validation : un pattern est complet si l'autre extrémité, l'arête, et le mode-spécifique sont cohérents
-            const isPatternComplete = isPatternCompleteHelper;
-            const firstMissingHint = firstMissingHintHelper;
-
-            const allComplete = patterns.length > 0 && patterns.every(isPatternComplete);
+            const allComplete = patterns.length > 0 && patterns.every(isPatternCompleteHelper);
             const canValidatePatterns = stepperDraft.noPatterns || allComplete;
 
             if (!stepperDraft.targetType || !stepperDraft.mappingOk) {
@@ -1059,7 +1055,7 @@ export default function SourceStepper({
 
                 {/* ═ Liste des patterns ═ */}
                 {!stepperDraft.noPatterns && (() => {
-                  const completeCount = patterns.filter(p => isPatternComplete(p)).length;
+                  const completeCount = patterns.filter(p => isPatternCompleteHelper(p)).length;
                   const allComplete = patterns.length > 0 && completeCount === patterns.length;
                   return (
                   <div style={{ background: C.alt, border: `1px solid ${allComplete ? C.accent : (completeCount > 0 ? C.warn : C.blight)}`, borderRadius: 8, padding: "14px 16px", marginBottom: 14 }}>
@@ -1087,7 +1083,7 @@ export default function SourceStepper({
                     )}
 
                     {patterns.map((p, idx) => {
-                      const complete = isPatternComplete(p);
+                      const complete = isPatternCompleteHelper(p);
                       const otherFam = p.otherNodeType ? TYPE_FAMILY(p.otherNodeType) : "";
                       const availableEdges = p.otherNodeType ? compatibleEdges(targetFam, otherFam) : [];
                       const targetTypeColor = TC[stepperDraft.targetType] || C.muted;
@@ -1175,7 +1171,7 @@ export default function SourceStepper({
                                 </span>
                               )}
                               {!complete && (() => {
-                                const hint = firstMissingHint(p);
+                                const hint = firstMissingHintHelper(p);
                                 return (
                                   <span style={{ fontSize: 10, color: C.warn, fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                     incomplet{hint ? ` · ${hint}` : ""}
