@@ -20,12 +20,7 @@ import Icon from './components/Icon.jsx';
 import DataTable from './components/DataTable.jsx';
 import ArchiveModal from './components/ArchiveModal.jsx';
 import AddSourceModal from './components/AddSourceModal.jsx';
-import DerivedPropModal from './components/DerivedPropModal.jsx';
-import SubtypeModal from './components/SubtypeModal.jsx';
-import EdgePropModal from './components/EdgePropModal.jsx';
 import CreateNodeModal from './components/CreateNodeModal.jsx';
-import IntrinsicPropModal from './components/IntrinsicPropModal.jsx';
-import ExpectationModal from './components/ExpectationModal.jsx';
 import AddPropModal from './components/AddPropModal.jsx';
 import SourceStepper from './components/SourceStepper.jsx';
 import TreeNode from './components/TreeNode.jsx';
@@ -63,9 +58,6 @@ export default function App() {
 
   const [derivedProps, setDerivedProps] = useState(initialDerivedProps);
 
-  // Modale édition de propriété dérivée
-  const [derivedPropModal, setDerivedPropModal] = useState(null); // { mode: "create"|"edit", id?, draft: {...} }
-
   // Arbre ontologique — state mutable pour permettre l'édition des propriétés intrinsèques (parcours 5 §I6)
   const [ontologyTree, setOntologyTree] = useState(INITIAL_ONTOLOGY_TREE);
   // Vue à plat de l'arbre — recalculée à chaque mutation
@@ -95,21 +87,11 @@ export default function App() {
     return path ? getEffectiveProps(ontologyTree, path) : [];
   };
 
-  // Modale édition de propriété intrinsèque (sur un nœud de l'arbre)
-  const [intrinsicPropModal, setIntrinsicPropModal] = useState(null); // { mode: "create"|"edit", path: [], originalKey?, draft: {...} }
-
-  // Modale édition de sous-type (création/renommage)
-  const [subtypeModal, setSubtypeModal] = useState(null); // { mode: "create"|"edit", parentPath?: [], path?: [], draft: {...} }
   const [hoveredTreePath, setHoveredTreePath] = useState(null); // pathKey du nœud survolé dans la sidebar
 
   // Liste mutable des types d'arêtes (parcours 5 §I6 étape 5)
   const [edgeTypes, setEdgeTypes] = useState(INITIAL_EDGE_TYPES);
 
-  // Modale édition de propriété spécifique d'arête
-  const [edgePropModal, setEdgePropModal] = useState(null); // { mode: "create"|"edit", edgeKey, originalKey?, draft: {...} }
-
-  // Modale édition d'attente ontologique (parcours 5 §I7)
-  const [expectationModal, setExpectationModal] = useState(null); // { mode, path, originalSig?, draft }
   const [sourceConfig, setSourceConfig] = useState({}); // { [sourceId]: { sourceOk, mappingOk, patternsOk, imported, hasError } }
   const [sourceStepper, setSourceStepper] = useState(null); // { sourceId, step, mode: 'create'|'edit' }
   const [stepperDraft, setStepperDraft] = useState(null); // config temporaire en cours d'édition dans le stepper
@@ -595,57 +577,9 @@ export default function App() {
           hoveredTreePath={hoveredTreePath} setHoveredTreePath={setHoveredTreePath}
           derivedProps={derivedProps} setDerivedProps={setDerivedProps}
           getSchemaPropsForType={getSchemaPropsForType}
-          setIntrinsicPropModal={setIntrinsicPropModal}
-          setSubtypeModal={setSubtypeModal}
-          setDerivedPropModal={setDerivedPropModal}
-          setEdgePropModal={setEdgePropModal}
-          setExpectationModal={setExpectationModal}
         />
       )}
 
-
-      {/* ═══ MODALE — Édition d'attente ontologique (parcours 5 §I7) ═══ */}
-      {expectationModal && (
-        <ExpectationModal
-          expectationModal={expectationModal} setExpectationModal={setExpectationModal}
-          ontologyTree={ontologyTree} setOntologyTree={setOntologyTree} ontologyFlat={ontologyFlat}
-          edgeTypes={edgeTypes}
-        />
-      )}
-
-      {/* ═══ MODALE — Édition de propriété d'arête (parcours 5 §I6 étape 5) ═══ */}
-      {edgePropModal && (
-        <EdgePropModal
-          edgePropModal={edgePropModal} setEdgePropModal={setEdgePropModal}
-          edgeTypes={edgeTypes} setEdgeTypes={setEdgeTypes}
-        />
-      )}
-
-      {/* ═══ MODALE — Édition de sous-type (parcours 5 §I6 étape 4) ═══ */}
-      {subtypeModal && (
-        <SubtypeModal
-          subtypeModal={subtypeModal} setSubtypeModal={setSubtypeModal}
-          ontologyTree={ontologyTree} setOntologyTree={setOntologyTree}
-          ontologyFlat={ontologyFlat}
-          schemaSelection={schemaSelection} setSchemaSelection={setSchemaSelection}
-        />
-      )}
-
-      {/* ═══ MODALE — Édition propriété intrinsèque (parcours 5 §I6) ═══ */}
-      {intrinsicPropModal && (
-        <IntrinsicPropModal
-          intrinsicPropModal={intrinsicPropModal} setIntrinsicPropModal={setIntrinsicPropModal}
-          ontologyTree={ontologyTree} setOntologyTree={setOntologyTree} ontologyFlat={ontologyFlat}
-        />
-      )}
-      {/* ═══ MODALE — Édition propriété dérivée (D10) ═══ */}
-      {derivedPropModal && (
-        <DerivedPropModal
-          derivedPropModal={derivedPropModal} setDerivedPropModal={setDerivedPropModal}
-          derivedProps={derivedProps} setDerivedProps={setDerivedProps}
-          schemaSelection={schemaSelection} ontologyFlat={ontologyFlat}
-        />
-      )}
 
       {/* ═══ MODALE UNIQUE — Identité + Configurer (onglets) ═══ */}
       {createModal && (

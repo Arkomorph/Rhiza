@@ -1,10 +1,21 @@
-import React from "react";
+// ─── Section Schéma — navigation et édition de l'ontologie ──────────
+// Cette page possède l'orchestration de ses 5 modales (open/close,
+// item édité). Elle reçoit ontologyTree et setOntologyTree en props
+// parce que ces données sont partagées avec d'autres composants
+// (SourceStepper en lecture, AddPropModal en mutation, App pour les
+// dérivations ontologyTypesGrouped et getSchemaPropsForType).
+import React, { useState } from "react";
 import { C, F } from "../config/theme.js";
 import { colorForOntologyPath } from "../helpers/colors.js";
 import { getEffectiveProps, countDescendants, treeRemoveSubtype, treeRemoveProp, expectationSignature, getEffectiveExpectations, getEffectiveDerivedProps, treeRemoveExpectation } from "../helpers/ontology.js";
 import { previewEnumValues } from "../helpers/enum.js";
 import Icon from "../components/Icon.jsx";
 import DataTable from "../components/DataTable.jsx";
+import IntrinsicPropModal from "../components/IntrinsicPropModal.jsx";
+import SubtypeModal from "../components/SubtypeModal.jsx";
+import DerivedPropModal from "../components/DerivedPropModal.jsx";
+import EdgePropModal from "../components/EdgePropModal.jsx";
+import ExpectationModal from "../components/ExpectationModal.jsx";
 
 export default function SchemaPage({
   schemaSelection, setSchemaSelection,
@@ -14,8 +25,13 @@ export default function SchemaPage({
   hoveredTreePath, setHoveredTreePath,
   derivedProps, setDerivedProps,
   getSchemaPropsForType,
-  setIntrinsicPropModal, setSubtypeModal, setDerivedPropModal, setEdgePropModal, setExpectationModal,
 }) {
+  // ─── 5 modales schema — état local (open/close + item édité) ──────
+  const [intrinsicPropModal, setIntrinsicPropModal] = useState(null);
+  const [subtypeModal, setSubtypeModal] = useState(null);
+  const [derivedPropModal, setDerivedPropModal] = useState(null);
+  const [edgePropModal, setEdgePropModal] = useState(null);
+  const [expectationModal, setExpectationModal] = useState(null);
   const sel = schemaSelection;
   const selectedNode = sel.kind === "node" ? ontologyFlat[sel.path.join(":")] : null;
   const selectedEdge = sel.kind === "edge" ? edgeTypes.find(e => e.key === sel.path[0]) : null;
@@ -145,6 +161,7 @@ export default function SchemaPage({
   };
 
   return (
+    <>
     <div style={{ display: "flex", height: "calc(100vh - 60px)", background: C.surface }}>
       {/* Sidebar — arbre ASCII */}
       <div style={{ width: 320, borderRight: `1px solid ${C.blight}`, padding: "20px 16px", overflowY: "auto", background: C.alt, flexShrink: 0 }}>
@@ -947,5 +964,42 @@ export default function SchemaPage({
         )}
       </div>
     </div>
+
+    {/* ═══ Modales schema — état local ═══ */}
+    {expectationModal && (
+      <ExpectationModal
+        expectationModal={expectationModal} setExpectationModal={setExpectationModal}
+        ontologyTree={ontologyTree} setOntologyTree={setOntologyTree} ontologyFlat={ontologyFlat}
+        edgeTypes={edgeTypes}
+      />
+    )}
+    {edgePropModal && (
+      <EdgePropModal
+        edgePropModal={edgePropModal} setEdgePropModal={setEdgePropModal}
+        edgeTypes={edgeTypes} setEdgeTypes={setEdgeTypes}
+      />
+    )}
+    {subtypeModal && (
+      <SubtypeModal
+        subtypeModal={subtypeModal} setSubtypeModal={setSubtypeModal}
+        ontologyTree={ontologyTree} setOntologyTree={setOntologyTree}
+        ontologyFlat={ontologyFlat}
+        schemaSelection={schemaSelection} setSchemaSelection={setSchemaSelection}
+      />
+    )}
+    {intrinsicPropModal && (
+      <IntrinsicPropModal
+        intrinsicPropModal={intrinsicPropModal} setIntrinsicPropModal={setIntrinsicPropModal}
+        ontologyTree={ontologyTree} setOntologyTree={setOntologyTree} ontologyFlat={ontologyFlat}
+      />
+    )}
+    {derivedPropModal && (
+      <DerivedPropModal
+        derivedPropModal={derivedPropModal} setDerivedPropModal={setDerivedPropModal}
+        derivedProps={derivedProps} setDerivedProps={setDerivedProps}
+        schemaSelection={schemaSelection} ontologyFlat={ontologyFlat}
+      />
+    )}
+    </>
   );
 }
