@@ -4,7 +4,7 @@
 import React from 'react';
 import { C, F } from '../config/theme.js';
 import { findPathForType, treeAddProp, getEffectiveProps } from '../helpers/ontology.js';
-import Icon from './Icon.jsx';
+import ModalShell from './ModalShell.jsx';
 
 export default function AddPropModal({
   addPropModal, setAddPropModal,
@@ -60,73 +60,64 @@ export default function AddPropModal({
   };
 
   return (
-    <div
-      onClick={() => setAddPropModal(null)}
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}
+    <ModalShell
+      title="Nouvelle propriété"
+      onClose={() => setAddPropModal(null)}
+      width={400}
+      zIndex={200}
+      onOverlayClick={() => setAddPropModal(null)}
     >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{ background: C.surface, borderRadius: 14, padding: 24, width: 400, fontFamily: F.body, boxShadow: "0 8px 24px rgba(0,0,0,0.15)", position: "relative" }}
-      >
-        <span onClick={() => setAddPropModal(null)} style={{ position: "absolute", top: 14, right: 16, cursor: "pointer", display: "inline-flex", padding: 2 }}>
-          <Icon name="x" size={16} color={C.muted} />
-        </span>
-
-        <div style={{ fontSize: 13, fontWeight: 600, fontFamily: F.title, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
-          Nouvelle propriété
-        </div>
-        <div style={{ fontSize: 10, color: C.edit, marginBottom: 18, lineHeight: 1.5, padding: "8px 10px", background: C.editL, border: `1px solid ${C.edit}`, borderRadius: 5 }}>
-          <strong style={{ fontFamily: F.title, textTransform: "uppercase", letterSpacing: "0.04em" }}>Ajout au Schéma</strong> · cette propriété sera ajoutée au type concerné dans le Schéma global, donc disponible pour toutes les sources actuelles et futures. Sélectionnée pour <span style={{ fontFamily: "monospace", color: C.text }}>{sf}</span>.
-        </div>
-
-        <div style={{ marginBottom: 10 }}>
-          <label style={{ display: "block", fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>Label</label>
-          <input
-            value={addPropDraft.label}
-            onChange={e => setAddPropDraft({ ...addPropDraft, label: e.target.value })}
-            style={{ width: "100%", padding: "7px 10px", fontSize: 12, border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box", fontFamily: F.body }}
-          />
-        </div>
-
-        <div style={{ marginBottom: 10 }}>
-          <label style={{ display: "block", fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>Clé technique</label>
-          <input
-            value={addPropDraft.key}
-            onChange={e => setAddPropDraft({ ...addPropDraft, key: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "") })}
-            style={{ width: "100%", padding: "7px 10px", fontSize: 12, fontFamily: "monospace", border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box" }}
-          />
-        </div>
-
-        <div style={{ marginBottom: 22 }}>
-          <label style={{ display: "block", fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>Type</label>
-          <select
-            value={addPropDraft.type}
-            onChange={e => setAddPropDraft({ ...addPropDraft, type: e.target.value })}
-            style={{ width: "100%", padding: "7px 10px", fontSize: 12, border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box", background: C.surface, fontFamily: F.body }}
-          >
-            <option value="string">string</option>
-            <option value="integer">integer</option>
-            <option value="float">float</option>
-            <option value="date">date</option>
-            <option value="boolean">boolean</option>
-          </select>
-        </div>
-
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <button onClick={() => setAddPropModal(null)} style={{ fontSize: 12, padding: "8px 16px", border: `1px solid ${C.border}`, borderRadius: 7, background: C.surface, color: C.muted, cursor: "pointer", fontFamily: F.body }}>Annuler</button>
-          <button
-            onClick={handleSave}
-            disabled={!addPropDraft.key || !addPropDraft.label}
-            style={{
-              fontSize: 12, padding: "8px 18px", border: "none", borderRadius: 7,
-              background: (!addPropDraft.key || !addPropDraft.label) ? C.border : C.accent,
-              color: (!addPropDraft.key || !addPropDraft.label) ? C.faint : "#fff",
-              cursor: (!addPropDraft.key || !addPropDraft.label) ? "default" : "pointer",
-              fontWeight: 600, fontFamily: F.body,
-            }}
-          >Ajouter</button>
-        </div>
+      <div style={{ fontSize: 10, color: C.edit, marginBottom: 18, lineHeight: 1.5, padding: "8px 10px", background: C.editL, border: `1px solid ${C.edit}`, borderRadius: 5 }}>
+        <strong style={{ fontFamily: F.title, textTransform: "uppercase", letterSpacing: "0.04em" }}>Ajout au Schéma</strong> · cette propriété sera ajoutée au type concerné dans le Schéma global, donc disponible pour toutes les sources actuelles et futures. Sélectionnée pour <span style={{ fontFamily: "monospace", color: C.text }}>{sf}</span>.
       </div>
-    </div>
+
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ display: "block", fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>Label</label>
+        <input
+          value={addPropDraft.label}
+          onChange={e => setAddPropDraft({ ...addPropDraft, label: e.target.value })}
+          style={{ width: "100%", padding: "7px 10px", fontSize: 12, border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box", fontFamily: F.body }}
+        />
+      </div>
+
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ display: "block", fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>Clé technique</label>
+        <input
+          value={addPropDraft.key}
+          onChange={e => setAddPropDraft({ ...addPropDraft, key: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "") })}
+          style={{ width: "100%", padding: "7px 10px", fontSize: 12, fontFamily: "monospace", border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box" }}
+        />
+      </div>
+
+      <div style={{ marginBottom: 22 }}>
+        <label style={{ display: "block", fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>Type</label>
+        <select
+          value={addPropDraft.type}
+          onChange={e => setAddPropDraft({ ...addPropDraft, type: e.target.value })}
+          style={{ width: "100%", padding: "7px 10px", fontSize: 12, border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box", background: C.surface, fontFamily: F.body }}
+        >
+          <option value="string">string</option>
+          <option value="integer">integer</option>
+          <option value="float">float</option>
+          <option value="date">date</option>
+          <option value="boolean">boolean</option>
+        </select>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+        <button onClick={() => setAddPropModal(null)} style={{ fontSize: 12, padding: "8px 16px", border: `1px solid ${C.border}`, borderRadius: 7, background: C.surface, color: C.muted, cursor: "pointer", fontFamily: F.body }}>Annuler</button>
+        <button
+          onClick={handleSave}
+          disabled={!addPropDraft.key || !addPropDraft.label}
+          style={{
+            fontSize: 12, padding: "8px 18px", border: "none", borderRadius: 7,
+            background: (!addPropDraft.key || !addPropDraft.label) ? C.border : C.accent,
+            color: (!addPropDraft.key || !addPropDraft.label) ? C.faint : "#fff",
+            cursor: (!addPropDraft.key || !addPropDraft.label) ? "default" : "pointer",
+            fontWeight: 600, fontFamily: F.body,
+          }}
+        >Ajouter</button>
+      </div>
+    </ModalShell>
   );
 }
