@@ -137,10 +137,11 @@ const territoiresRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/', async (request) => {
     const { type } = request.query as { type?: string };
 
-    let territoires;
+    // Postgres : territoires + nature_history
+    let pgRows;
     if (type) {
       const pattern = `Territoire:${type}:%`;
-      territoires = await sql`
+      pgRows = await sql`
         SELECT t.uuid, t.nom, t.created_at, t.archived_at,
                p.value_text AS nature_history
         FROM metier.territoires t
@@ -153,7 +154,7 @@ const territoiresRoutes: FastifyPluginAsync = async (fastify) => {
         ORDER BY t.nom
       `;
     } else {
-      territoires = await sql`
+      pgRows = await sql`
         SELECT t.uuid, t.nom, t.created_at, t.archived_at,
                p.value_text AS nature_history
         FROM metier.territoires t
@@ -165,6 +166,20 @@ const territoiresRoutes: FastifyPluginAsync = async (fastify) => {
         ORDER BY t.nom
       `;
     }
+
+    // Neo4j : parent_uuid pour chaque territoire (une seule requête)
+    const parentRows = await runCypher<{ uuid: string; parent_uuid: string | null }>(
+      `MATCH (n:Territoire)
+       OPTIONAL MATCH (n)-[:CONTENU_DANS]->(p:Territoire)
+       RETURN n.uuid AS uuid, p.uuid AS parent_uuid`,
+    );
+    const parentMap = new Map(parentRows.map(r => [r.uuid, r.parent_uuid]));
+
+    // Assembler
+    const territoires = pgRows.map(t => ({
+      ...t,
+      parent_uuid: parentMap.get(t.uuid as string) ?? null,
+    }));
 
     return { territoires, total: territoires.length };
   });

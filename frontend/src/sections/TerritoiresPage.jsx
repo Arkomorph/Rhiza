@@ -31,46 +31,15 @@ export default function TerritoiresPage({
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  // Fetch liste + détails de tous les territoires pour reconstruire la hiérarchie
-  // Sprint 1 : N+1 appels (6 nœuds = 7 requêtes). Acceptable.
-  // Sprint 2 : enrichir GET /territoires pour inclure parent_uuid directement.
+  // Fetch liste des territoires — un seul appel, parent_uuid inclus côté backend
   useEffect(() => {
     fetch(`${API_BASE}/territoires`)
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
-      .then(async (data) => {
-        const list = data.territoires || [];
-        if (list.length === 0) {
-          setApiNodes([]);
-          setError(null);
-          return;
-        }
-
-        // Fetch détail de chaque nœud pour les relations CONTENU_DANS
-        const details = await Promise.all(
-          list.map(t =>
-            fetch(`${API_BASE}/territoires/${t.uuid}`)
-              .then(r => r.ok ? r.json() : null)
-              .catch(() => null)
-          )
-        );
-
-        // Construire la map parentId depuis les arêtes CONTENU_DANS sortantes
-        // outgoing=true + type=CONTENU_DANS → le target est le parent
-        const parentMap = {};
-        for (const d of details) {
-          if (!d) continue;
-          const parentRel = (d.relations || []).find(
-            r => r.type === 'CONTENU_DANS' && r.outgoing === true
-          );
-          if (parentRel) {
-            parentMap[d.uuid] = parentRel.target_uuid;
-          }
-        }
-
-        const converted = list.map(t => ({
+      .then(data => {
+        const converted = (data.territoires || []).map(t => ({
           id: t.uuid,
           nom: t.nom,
           type: extractType(t.nature_history),
@@ -78,8 +47,9 @@ export default function TerritoiresPage({
           permanent: false,
           placeholder: false,
           sources: [],
-          // Hiérarchie reconstruite depuis CONTENU_DANS. Les racines (sans parent) sont enfants de ROOT.
-          parentId: parentMap[t.uuid] || ROOT.id,
+          // parent_uuid vient du backend (requête Cypher CONTENU_DANS).
+          // Les racines (sans parent Neo4j) sont enfants de ROOT.
+          parentId: t.parent_uuid || ROOT.id,
         }));
         setApiNodes(converted);
         setError(null);
