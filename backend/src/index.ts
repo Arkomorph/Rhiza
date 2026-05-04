@@ -5,6 +5,7 @@ import { config } from './config.js';
 import { migrate } from './db/migrate.js';
 import requestLogger from './plugins/request-logger.js';
 import jwtPlugin from './plugins/jwt.js';
+import driver from './db/neo4j.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 
@@ -28,12 +29,20 @@ await fastify.register(jwtPlugin);
 await fastify.register(healthRoutes);
 await fastify.register(authRoutes, { prefix: '/auth' });
 
-// Migration au démarrage
+// Connexions aux bases au démarrage
 try {
   await migrate();
-  fastify.log.info({ module: 'db' }, 'migration applied');
+  fastify.log.info({ module: 'db' }, 'postgres connected, migration applied');
 } catch (err) {
-  fastify.log.fatal({ module: 'db', err }, 'migration failed');
+  fastify.log.fatal({ module: 'db', err }, 'postgres connection/migration failed');
+  process.exit(1);
+}
+
+try {
+  await driver.verifyConnectivity();
+  fastify.log.info({ module: 'db' }, 'neo4j connected');
+} catch (err) {
+  fastify.log.fatal({ module: 'db', err }, 'neo4j connection failed');
   process.exit(1);
 }
 
