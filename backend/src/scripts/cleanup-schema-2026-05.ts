@@ -15,7 +15,7 @@ import { migrate } from '../db/migrate.js';
 
 await migrate();
 
-const SOURCE = 'migration-cleanup-2026-05';
+const SOURCE = 'migration';
 
 await sql.begin(async (tx) => {
   console.log('── Cleanup schema Mai 2026 ──────────────────────────');
