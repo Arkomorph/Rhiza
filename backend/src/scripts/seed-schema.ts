@@ -74,11 +74,14 @@ const edgeTypes = edgeTypesExports.INITIAL_EDGE_TYPES as JsEdge[];
 
 console.log('Seed schema depuis les modules JS frontend...');
 
-// ── 1. Types (parcours récursif, racines d'abord pour FK parent_key) ──
+// ── 1. Types + propriétés (parcours récursif, racines d'abord pour FK parent_key) ──
+// Les expected edges sont insérées APRÈS les arêtes (FK edge_key → schema_edges).
 
 let typeCount = 0;
 let propCount = 0;
-let expectedEdgeCount = 0;
+
+// Collecte les expected edges pour insertion différée
+const pendingExpectedEdges: Array<{ typeKey: string; edgeKey: string; direction: string; targetType: string; obligation: string; multiplicity: string; defaultMode: string }> = [];
 
 async function walkNode(node: JsNode, parentKey: string | null, isRoot: boolean) {
   await sql`
@@ -100,14 +103,13 @@ async function walkNode(node: JsNode, parentKey: string | null, isRoot: boolean)
     propCount++;
   }
 
-  // Expected edges
+  // Collecter les expected edges (insertion différée)
   for (const ee of node.expectedEdges ?? []) {
     const targetType = ee.otherSide[ee.otherSide.length - 1];
-    await sql`
-      INSERT INTO config.schema_expected_edges (type_key, edge_key, direction, target_type, obligation, multiplicity, default_mode)
-      VALUES (${node.key}, ${ee.edgeKey}, ${ee.direction}, ${targetType}, ${ee.obligation}, ${ee.multiplicity}, ${ee.defaultMode})
-    `;
-    expectedEdgeCount++;
+    pendingExpectedEdges.push({
+      typeKey: node.key, edgeKey: ee.edgeKey, direction: ee.direction,
+      targetType, obligation: ee.obligation, multiplicity: ee.multiplicity, defaultMode: ee.defaultMode,
+    });
   }
 
   // Enfants
@@ -121,7 +123,6 @@ for (const root of Object.values(tree)) {
 }
 console.log(`  ✔ ${typeCount} types`);
 console.log(`  ✔ ${propCount} propriétés intrinsèques`);
-console.log(`  ✔ ${expectedEdgeCount} arêtes attendues`);
 
 // ── 2. Arêtes ──
 
@@ -148,7 +149,17 @@ for (const e of edgeTypes) {
 }
 console.log(`  ✔ ${edgePropCount} propriétés d'arête`);
 
-// ── 4. Propriétés universelles d'arête ──
+// ── 4. Expected edges (différées — les arêtes existent maintenant) ──
+
+for (const ee of pendingExpectedEdges) {
+  await sql`
+    INSERT INTO config.schema_expected_edges (type_key, edge_key, direction, target_type, obligation, multiplicity, default_mode)
+    VALUES (${ee.typeKey}, ${ee.edgeKey}, ${ee.direction}, ${ee.targetType}, ${ee.obligation}, ${ee.multiplicity}, ${ee.defaultMode})
+  `;
+}
+console.log(`  ✔ ${pendingExpectedEdges.length} arêtes attendues`);
+
+// ── 5. Propriétés universelles d'arête ──
 // Ces 6 propriétés sont dans le code du proto, pas dans un export JS.
 // On les insère en dur — elles sont stables par design (D11).
 
