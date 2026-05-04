@@ -15,6 +15,14 @@ export const INITIAL_ONTOLOGY_TREE = {
           { key: "nom_officiel", label: "Nom officiel", type: "string" },
           { key: "limite", label: "Limite cantonale", type: "geometry", geomKind: "polygon" },
         ],
+        expectedEdges: [
+          {
+            edgeKey: "ContenuDans", direction: "outgoing", otherSide: ["Territoire"],
+            obligation: "hard", multiplicity: "one",
+            defaultMode: "linkOrCreateGeneric",
+            notes: "Tout Canton est contenu dans la Suisse.",
+          },
+        ],
       },
       Commune: {
         key: "Commune", label: "Commune",
@@ -24,12 +32,43 @@ export const INITIAL_ONTOLOGY_TREE = {
           { key: "population", label: "Population", type: "integer", notes: "STATPOP, mise à jour annuelle." },
           { key: "limite", label: "Limite communale", type: "geometry", geomKind: "polygon" },
         ],
+        expectedEdges: [
+          {
+            edgeKey: "ContenuDans", direction: "outgoing", otherSide: ["Territoire", "Canton"],
+            obligation: "hard", multiplicity: "one",
+            defaultMode: "linkOrCreateGeneric",
+            notes: "Toute Commune est dans un Canton.",
+          },
+        ],
+      },
+      Secteur: {
+        key: "Secteur", label: "Secteur",
+        description: "Délimitation infra-communale au sens OFS. Distincte du Quartier (cellule D SWICE).",
+        props: [
+          { key: "limite", label: "Limite du secteur", type: "geometry", geomKind: "polygon" },
+        ],
+        expectedEdges: [
+          {
+            edgeKey: "ContenuDans", direction: "outgoing", otherSide: ["Territoire", "Commune"],
+            obligation: "hard", multiplicity: "one",
+            defaultMode: "linkOrCreateGeneric",
+            notes: "Tout Secteur est dans une Commune.",
+          },
+        ],
       },
       Quartier: {
         key: "Quartier", label: "Quartier",
         props: [
           { key: "code_statistique", label: "Code statistique", type: "string", natural_key: true },
           { key: "limite", label: "Limite du quartier", type: "geometry", geomKind: "polygon" },
+        ],
+        expectedEdges: [
+          {
+            edgeKey: "ContenuDans", direction: "outgoing", otherSide: ["Territoire", "Secteur"],
+            obligation: "hard", multiplicity: "one",
+            defaultMode: "linkOrCreateGeneric",
+            notes: "Tout Quartier est dans un Secteur.",
+          },
         ],
       },
       Parcelle: {
@@ -138,6 +177,14 @@ export const INITIAL_ONTOLOGY_TREE = {
         props: [
           { key: "nom", label: "Nom", type: "string" },
           { key: "usage", label: "Usage", type: "enum", enum_values: ["séjour", "chambre", "cuisine", "salle_de_bain", "wc", "rangement", "autre"] },
+        ],
+        expectedEdges: [
+          {
+            edgeKey: "ContenuDans", direction: "outgoing", otherSide: ["Territoire", "Logement"],
+            obligation: "hard", multiplicity: "one",
+            defaultMode: "linkOrCreateGeneric",
+            notes: "Toute Pièce est dans un Logement.",
+          },
         ],
       },
     },

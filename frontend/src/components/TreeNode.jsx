@@ -3,14 +3,19 @@ import React from 'react';
 import { C, F, KIND_LEVEL } from '../config/theme.js';
 import { TC } from '../config/palettes.js';
 import { INDENT, CASCADE_OFFSET } from '../config/constants.js';
-import { CANONICAL } from '../helpers/spatial.js';
 import { lighten } from '../helpers/colors.js';
 import Icon from './Icon.jsx';
+import useSchemaStore from '../stores/useSchemaStore.js';
 
-function getChildCascade(type) {
-  const idx = CANONICAL.indexOf(type);
-  if (idx === -1 || idx === CANONICAL.length - 1) return [];
-  return [CANONICAL.slice(idx + 1)];
+function getChildCascade(type, childrenOf, canonical) {
+  // Enfants directs depuis la hiérarchie spatiale (expected edges ContenuDans)
+  const directChildren = childrenOf[type] || [];
+  if (directChildren.length === 0) return [];
+  // Construire la chaîne complète depuis chaque enfant direct
+  const idx = canonical.indexOf(type);
+  if (idx === -1) return [];
+  const rest = canonical.slice(idx + 1);
+  return rest.length > 0 ? [rest] : [];
 }
 
 // readOnly — masque les mutations (crayon, poubelle, cascades "+").
@@ -22,9 +27,10 @@ export default function TreeNode({
   onEdit, onArchive, onCreateChild,
   onSelect,
 }) {
+  const { territoireChildrenOf, territoireCanonical } = useSchemaStore();
   const bc = TC[node.type] || C.muted;
   const children = nodes.filter(n => n.parentId === node.id);
-  const cascades = getChildCascade(node.type);
+  const cascades = getChildCascade(node.type, territoireChildrenOf, territoireCanonical);
 
   return (
     <div style={{ marginLeft: depth > 0 ? INDENT : 0 }}>

@@ -4,7 +4,8 @@
 import React, { useState, useEffect } from 'react';
 import { C, F, KIND_LEVEL } from '../config/theme.js';
 import { TC } from '../config/palettes.js';
-import { TYPES, ROOT } from '../config/constants.js';
+import { ROOT } from '../config/constants.js';
+import useSchemaStore from '../stores/useSchemaStore.js';
 import { lighten } from '../helpers/colors.js';
 import TreeNode from '../components/TreeNode.jsx';
 import DataTable from '../components/DataTable.jsx';
@@ -17,6 +18,7 @@ export default function TerritoiresPage({
   onNodeRenamed, onEdit, onArchive, onCreateChild,
 }) {
   const { nodes, loading, error } = useTerritoiresStore();
+  const { territoireSubtypes } = useSchemaStore();
   const [selectedUuid, setSelectedUuid] = useState(null);
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -174,7 +176,7 @@ export default function TerritoiresPage({
       <div style={{ marginTop: 24, paddingTop: 12, borderTop: `1px solid ${C.blight}`, position: "relative", zIndex: 1 }}>
         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint }}>Types</span>
-          {TYPES.map(t => (
+          {territoireSubtypes.map(t => (
             <div key={t} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: C.muted }}>
               <div style={{ width: 6, height: 6, borderRadius: 3, background: TC[t] }} />{t}
             </div>

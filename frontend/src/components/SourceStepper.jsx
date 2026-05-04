@@ -6,7 +6,8 @@ import { CATALOG } from '../data/catalog.js';
 import { SPATIAL_OPS, compatibleSpatialOps } from '../data/edge-types.js';
 import { lighten, colorForOntologyPath } from '../helpers/colors.js';
 import { getEffectiveExpectations } from '../helpers/ontology.js';
-import { TYPE_FAMILY, compatibleEdges, CANONICAL } from '../helpers/spatial.js';
+import { TYPE_FAMILY, compatibleEdges } from '../helpers/spatial.js';
+import useSchemaStore from '../stores/useSchemaStore.js';
 import { isPatternCompleteHelper, firstMissingHintHelper, getStepMissing } from '../helpers/patterns.js';
 import Icon from './Icon.jsx';
 import DataTable from './DataTable.jsx';
@@ -32,6 +33,7 @@ export default function SourceStepper({
   edgeTypes,
   setAddPropModal, setAddPropDraft,
 }) {
+  const { territoireCanonical: CANONICAL } = useSchemaStore();
   if (!sourceStepper || !stepperDraft) return null;
 
   const steps = [

@@ -118,6 +118,77 @@ function buildOntologyTypesGrouped(tree) {
   return groups;
 }
 
+// Calcul de la hiérarchie spatiale depuis les expected_edges ContenuDans.
+// Remonte la chaîne en partant de chaque type qui a un ContenuDans outgoing
+// et reconstruit l'ordre d'imbrication.
+function buildSpatialHierarchy(types, expectedEdges) {
+  // Extraire les liens ContenuDans outgoing : type → parent spatial
+  const spatialParent = {};
+  for (const ee of expectedEdges) {
+    if (ee.edge_key === 'ContenuDans' && ee.direction === 'outgoing') {
+      spatialParent[ee.type_key] = ee.target_type;
+    }
+  }
+
+  // Construire childrenOf (inverse de spatialParent)
+  const childrenOf = {};
+  for (const [child, parent] of Object.entries(spatialParent)) {
+    if (!childrenOf[parent]) childrenOf[parent] = [];
+    childrenOf[parent].push(child);
+  }
+  // Ajouter les types sans enfant avec array vide
+  for (const t of types) {
+    if (!childrenOf[t.key]) childrenOf[t.key] = [];
+  }
+
+  // Construire la chaîne canonique en parcourant depuis Suisse (ou Territoire)
+  // Suisse n'est pas un sous-type dans schema_types, c'est le ROOT virtuel.
+  // On cherche les types qui ont ContenuDans → Territoire (= racine spatiale = Canton)
+  const canonical = ['Suisse'];
+  const visited = new Set(['Suisse']);
+
+  function walk(parentKey) {
+    const children = childrenOf[parentKey] || [];
+    for (const child of children) {
+      if (!visited.has(child)) {
+        visited.add(child);
+        canonical.push(child);
+        walk(child);
+      }
+    }
+  }
+
+  // Commencer par les enfants de Territoire (= racines de la hiérarchie spatiale)
+  // Canton a ContenuDans → Territoire, donc childrenOf["Territoire"] = ["Canton"]
+  walk('Territoire');
+  // Si aucun type n'a ContenuDans → Territoire, essayer Suisse
+  if (canonical.length === 1) walk('Suisse');
+
+  return { canonical, childrenOf };
+}
+
+function buildTypesByFamily(types) {
+  const families = {};
+  for (const t of types) {
+    const root = t.parent_key === null ? t.key : null;
+    if (root) {
+      if (!families[root]) families[root] = [];
+    }
+  }
+  for (const t of types) {
+    // Trouver la racine en remontant parent_key
+    let current = t;
+    const typeMap = {};
+    for (const tt of types) typeMap[tt.key] = tt;
+    while (current.parent_key && typeMap[current.parent_key]) {
+      current = typeMap[current.parent_key];
+    }
+    if (!families[current.key]) families[current.key] = [];
+    if (t.key !== current.key) families[current.key].push(t.key);
+  }
+  return families;
+}
+
 // ─── Store ───────────────────────────────────────────────────────────
 
 const useSchemaStore = create((set, get) => ({
@@ -134,6 +205,13 @@ const useSchemaStore = create((set, get) => ({
   ontologyFlat: {},
   ontologyTypesGrouped: [],
   edgeTypesFormatted: [],
+
+  // Hiérarchie spatiale dérivée des expected_edges ContenuDans
+  // Calculée dans fetchAll — remplace les constantes hardcodées CANONICAL, TYPES, CHILDREN_OF
+  territoireCanonical: [],    // ["Suisse", "Canton", "Commune", "Secteur", ...] — ordre d'imbrication spatiale
+  territoireChildrenOf: {},   // { "Suisse": ["Canton"], "Canton": ["Commune"], ... }
+  territoireSubtypes: [],     // sous-types directs de Territoire (pour la légende)
+  typesByFamily: {},          // { Territoire: [...], Acteur: [...], ... }
 
   // Loading
   loading: true,
@@ -153,6 +231,13 @@ const useSchemaStore = create((set, get) => ({
       const grouped = buildOntologyTypesGrouped(tree);
       const formatted = buildEdgeTypesFormatted(data.edges, data.edge_properties);
 
+      // Hiérarchie spatiale dérivée des expected_edges ContenuDans
+      const spatial = buildSpatialHierarchy(data.types, data.expected_edges);
+      const subtypes = data.types
+        .filter(t => t.parent_key === 'Territoire' && !t.archived_at)
+        .map(t => t.key);
+      const families = buildTypesByFamily(data.types);
+
       set({
         types: data.types,
         properties: data.properties,
@@ -164,6 +249,10 @@ const useSchemaStore = create((set, get) => ({
         ontologyFlat: flat,
         ontologyTypesGrouped: grouped,
         edgeTypesFormatted: formatted,
+        territoireCanonical: spatial.canonical,
+        territoireChildrenOf: spatial.childrenOf,
+        territoireSubtypes: subtypes,
+        typesByFamily: families,
         loading: false,
       });
     } catch (err) {

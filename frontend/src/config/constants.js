@@ -1,19 +1,7 @@
 // ─── Constantes structurelles ────────────────────────────────────────
-
-// Sous-types Territoire — chaîne canonique
-export const TYPES = ["Canton", "Commune", "Quartier", "Parcelle", "Bâtiment", "Logement", "Pièce"];
-
-// Imbrication stricte
-export const CHILDREN_OF = {
-  "Suisse": ["Canton"],
-  "Canton": ["Commune"],
-  "Commune": ["Quartier"],
-  "Quartier": ["Parcelle"],
-  "Parcelle": ["Bâtiment"],
-  "Bâtiment": ["Logement"],
-  "Logement": ["Pièce"],
-  "Pièce": [],
-};
+// Les hiérarchies de types (TYPES, CHILDREN_OF, CANONICAL, ONTOLOGY_GROUPS)
+// ne sont plus ici — elles sont dérivées du Schéma en base via useSchemaStore.
+// Seules restent les constantes de layout et le nœud racine.
 
 // Nœud racine permanent
 export const ROOT = { id: "suisse", nom: "Suisse", type: "Suisse", status: "active", permanent: true };
@@ -22,12 +10,3 @@ export const ROOT = { id: "suisse", nom: "Suisse", type: "Suisse", status: "acti
 export const INDENT = 20;
 // Alignement pastille cascade = INDENT + trait(16) + gap(8) + demi-pastille(5) - demi-pastille(4)
 export const CASCADE_OFFSET = 45;
-
-// Groupes ontologiques pour les sélecteurs
-export const ONTOLOGY_GROUPS = [
-  { label: "Territoire", types: ["Canton", "Commune", "Quartier", "Parcelle", "Bâtiment", "Logement", "Pièce"] },
-  { label: "Acteur", types: ["Acteur"] },
-  { label: "Flux", types: ["Flux"] },
-  { label: "Décision", types: ["Décision"] },
-];
-export const ONTOLOGY_TYPES = ONTOLOGY_GROUPS.flatMap(g => g.types);

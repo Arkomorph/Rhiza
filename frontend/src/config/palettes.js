@@ -5,6 +5,7 @@ export const TC = {
   Suisse: "#406d6c",
   Canton: "#c5604d",
   Commune: "#5696a4",
+  Secteur: "#7a8b6e",
   Quartier: "#c49c4e",
   Parcelle: "#6f8270",
   "Bâtiment": "#846056",
