@@ -141,22 +141,26 @@ const territoiresRoutes: FastifyPluginAsync = async (fastify) => {
     if (type) {
       const pattern = `Territoire:${type}:%`;
       territoires = await sql`
-        SELECT t.uuid, t.nom, t.created_at, t.archived_at
+        SELECT t.uuid, t.nom, t.created_at, t.archived_at,
+               p.value_text AS nature_history
         FROM metier.territoires t
+        LEFT JOIN metier.properties p
+          ON p.node_uuid = t.uuid
+          AND p.property_name = 'nature_history'
+          AND p.valid_to IS NULL
         WHERE t.archived_at IS NULL
-          AND EXISTS (
-            SELECT 1 FROM metier.properties p
-            WHERE p.node_uuid = t.uuid
-              AND p.property_name = 'nature_history'
-              AND p.valid_to IS NULL
-              AND p.value_text ILIKE ${pattern}
-          )
+          AND p.value_text ILIKE ${pattern}
         ORDER BY t.nom
       `;
     } else {
       territoires = await sql`
-        SELECT t.uuid, t.nom, t.created_at, t.archived_at
+        SELECT t.uuid, t.nom, t.created_at, t.archived_at,
+               p.value_text AS nature_history
         FROM metier.territoires t
+        LEFT JOIN metier.properties p
+          ON p.node_uuid = t.uuid
+          AND p.property_name = 'nature_history'
+          AND p.valid_to IS NULL
         WHERE t.archived_at IS NULL
         ORDER BY t.nom
       `;
