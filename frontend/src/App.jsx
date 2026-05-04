@@ -436,10 +436,14 @@ export default function App() {
       setLines(ls);
     };
 
-    measure();
+    // Délai pour laisser le DOM se stabiliser après le fetch API
+    const timer = setTimeout(measure, 100);
     const ro = new ResizeObserver(measure);
     ro.observe(container);
-    return () => ro.disconnect();
+    // MutationObserver pour détecter les changements de contenu (nœuds API chargés)
+    const mo = new MutationObserver(measure);
+    mo.observe(container, { childList: true, subtree: true });
+    return () => { clearTimeout(timer); ro.disconnect(); mo.disconnect(); };
   }, [nodes, section]);
 
   // ─── Arbre de lignes SVG pour la modale d'archivage ────────────────
