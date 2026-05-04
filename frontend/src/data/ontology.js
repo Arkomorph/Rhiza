@@ -81,10 +81,10 @@ export const INITIAL_ONTOLOGY_TREE = {
         ],
         expectedEdges: [
           {
-            edgeKey: "ContenuDans", direction: "outgoing", otherSide: ["Territoire", "Commune"],
+            edgeKey: "ContenuDans", direction: "outgoing", otherSide: ["Territoire", "Quartier"],
             obligation: "hard", multiplicity: "one",
             defaultMode: "linkOrCreateGeneric",
-            notes: "Toute Parcelle est nécessairement dans une Commune (cadastre suisse).",
+            notes: "Toute Parcelle est dans un Quartier (imbrication spatiale suisse).",
           },
           {
             edgeKey: "Possede", direction: "incoming", otherSide: ["Acteur"],

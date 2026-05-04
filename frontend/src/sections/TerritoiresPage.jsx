@@ -172,8 +172,36 @@ export default function TerritoiresPage({
         </div>
       )}
 
-      {/* Légende */}
+      {/* Légende — SPEC §Légende : 3 lignes obligatoires */}
       <div style={{ marginTop: 24, paddingTop: 12, borderTop: `1px solid ${C.blight}`, position: "relative", zIndex: 1 }}>
+        {/* Ligne 1 : Statuts */}
+        <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint }}>Statuts</span>
+          {(() => {
+            const demo = TC.Suisse || C.muted;
+            return (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.text }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 5, border: `2px solid ${demo}`, background: demo }} />
+                  Actif
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.text }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 5, border: `2px solid ${lighten(demo, KIND_LEVEL.draft)}`, background: "transparent" }} />
+                  Brouillon
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.text }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 5, border: `2px dashed ${lighten(demo, KIND_LEVEL.placeholder)}`, background: "transparent" }} />
+                  À nommer
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.text }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 4, border: `2px dashed ${lighten(demo, KIND_LEVEL.cascade)}`, background: "transparent" }} />
+                  À créer
+                </div>
+              </>
+            );
+          })()}
+        </div>
+        {/* Ligne 2 : Types */}
         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint }}>Types</span>
           {territoireSubtypes.map(t => (
@@ -183,8 +211,9 @@ export default function TerritoiresPage({
           ))}
         </div>
       </div>
-      <div style={{ marginTop: 8, fontSize: 10, color: C.faint }}>
-        PostgreSQL : {nodes.length} nœud{nodes.length !== 1 ? "s" : ""}
+      {/* Ligne 3 : Compteurs */}
+      <div style={{ marginTop: 12, fontSize: 10, color: C.faint }}>
+        PostgreSQL : {nodes.length} nœud{nodes.length !== 1 ? "s" : ""} · Neo4j : {nodes.filter(n => n.parentId && n.parentId !== 'suisse').length} relation{nodes.filter(n => n.parentId && n.parentId !== 'suisse').length !== 1 ? "s" : ""} Contenu_dans
       </div>
     </div>
   );
