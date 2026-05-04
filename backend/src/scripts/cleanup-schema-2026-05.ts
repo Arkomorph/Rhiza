@@ -167,23 +167,23 @@ await sql.begin(async (tx) => {
 
     // Trouver les territoires avec Batiment sans accent
     const batimentSansAccent = await tx`
-      SELECT tp.id, tp.entity_uuid, tp.value
-      FROM config.territory_properties tp
+      SELECT tp.id, tp.node_uuid, tp.value_text
+      FROM metier.properties tp
       WHERE tp.property_name = 'nature_history'
-        AND tp.value LIKE '%Batiment%'
+        AND tp.value_text LIKE '%Batiment%'
         AND tp.valid_to IS NULL
     `;
     for (const row of batimentSansAccent) {
-      const fixed = (row.value as string).replace('Batiment', 'Bâtiment');
-      corrections.push({ nom: `uuid:${row.entity_uuid}`, bad: row.value as string, good: fixed });
+      const fixed = (row.value_text as string).replace('Batiment', 'Bâtiment');
+      corrections.push({ nom: `uuid:${row.node_uuid}`, bad: row.value_text as string, good: fixed });
     }
 
     // Trouver Schoenberg avec nature_history "Territoire:" (sans sous-type)
     const schoenberg = await tx`
-      SELECT tp.id, tp.entity_uuid, tp.value
-      FROM config.territory_properties tp
+      SELECT tp.id, tp.node_uuid, tp.value_text
+      FROM metier.properties tp
       WHERE tp.property_name = 'nature_history'
-        AND tp.value = 'Territoire:'
+        AND tp.value_text = 'Territoire:'
         AND tp.valid_to IS NULL
     `;
 
@@ -191,31 +191,31 @@ await sql.begin(async (tx) => {
 
     for (const row of schoenberg) {
       await tx`
-        UPDATE config.territory_properties
+        UPDATE metier.properties
         SET valid_to = now()
         WHERE id = ${row.id}
       `;
       await tx`
-        INSERT INTO config.territory_properties (entity_uuid, property_name, value, source, confidence, valid_from)
-        VALUES (${row.entity_uuid}, 'nature_history', 'Territoire:Secteur:', ${SOURCE}, 'high', now())
+        INSERT INTO metier.properties (node_uuid, property_name, value_text, source, confidence, valid_from)
+        VALUES (${row.node_uuid}, 'nature_history', 'Territoire:Secteur:', ${SOURCE}, 'high', now())
       `;
       corrected++;
       console.log(`  ✔ (c) Schoenberg nature_history: Territoire: → Territoire:Secteur:`);
     }
 
     for (const row of batimentSansAccent) {
-      const fixed = (row.value as string).replace('Batiment', 'Bâtiment');
+      const fixed = (row.value_text as string).replace('Batiment', 'Bâtiment');
       await tx`
-        UPDATE config.territory_properties
+        UPDATE metier.properties
         SET valid_to = now()
         WHERE id = ${row.id}
       `;
       await tx`
-        INSERT INTO config.territory_properties (entity_uuid, property_name, value, source, confidence, valid_from)
-        VALUES (${row.entity_uuid}, 'nature_history', ${fixed}, ${SOURCE}, 'high', now())
+        INSERT INTO metier.properties (node_uuid, property_name, value_text, source, confidence, valid_from)
+        VALUES (${row.node_uuid}, 'nature_history', ${fixed}, ${SOURCE}, 'high', now())
       `;
       corrected++;
-      console.log(`  ✔ (c) ${row.entity_uuid} nature_history: ${row.value} → ${fixed}`);
+      console.log(`  ✔ (c) ${row.node_uuid} nature_history: ${row.value_text} → ${fixed}`);
     }
 
     if (corrected === 0) {
@@ -223,7 +223,7 @@ await sql.begin(async (tx) => {
     } else {
       await tx`
         INSERT INTO config.schema_audit (action, resource_type, resource_id, after, source)
-        VALUES ('UPDATE', 'territory_properties', 'nature_history',
+        VALUES ('UPDATE', 'properties', 'nature_history',
           ${JSON.stringify({ corrections: corrected, reason: 'fix Schoenberg sans Secteur + Batiment sans accent' })}::jsonb,
           ${SOURCE})
       `;
