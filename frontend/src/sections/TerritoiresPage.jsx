@@ -31,15 +31,46 @@ export default function TerritoiresPage({
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  // Fetch liste des territoires au montage
+  // Fetch liste + détails de tous les territoires pour reconstruire la hiérarchie
+  // Sprint 1 : N+1 appels (6 nœuds = 7 requêtes). Acceptable.
+  // Sprint 2 : enrichir GET /territoires pour inclure parent_uuid directement.
   useEffect(() => {
     fetch(`${API_BASE}/territoires`)
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
-      .then(data => {
-        const converted = (data.territoires || []).map(t => ({
+      .then(async (data) => {
+        const list = data.territoires || [];
+        if (list.length === 0) {
+          setApiNodes([]);
+          setError(null);
+          return;
+        }
+
+        // Fetch détail de chaque nœud pour les relations CONTENU_DANS
+        const details = await Promise.all(
+          list.map(t =>
+            fetch(`${API_BASE}/territoires/${t.uuid}`)
+              .then(r => r.ok ? r.json() : null)
+              .catch(() => null)
+          )
+        );
+
+        // Construire la map parentId depuis les arêtes CONTENU_DANS sortantes
+        // outgoing=true + type=CONTENU_DANS → le target est le parent
+        const parentMap = {};
+        for (const d of details) {
+          if (!d) continue;
+          const parentRel = (d.relations || []).find(
+            r => r.type === 'CONTENU_DANS' && r.outgoing === true
+          );
+          if (parentRel) {
+            parentMap[d.uuid] = parentRel.target_uuid;
+          }
+        }
+
+        const converted = list.map(t => ({
           id: t.uuid,
           nom: t.nom,
           type: extractType(t.nature_history),
@@ -47,7 +78,8 @@ export default function TerritoiresPage({
           permanent: false,
           placeholder: false,
           sources: [],
-          parentId: ROOT.id, // Sprint 1 : tous les nœuds sont enfants de ROOT (pas de hiérarchie CONTENU_DANS)
+          // Hiérarchie reconstruite depuis CONTENU_DANS. Les racines (sans parent) sont enfants de ROOT.
+          parentId: parentMap[t.uuid] || ROOT.id,
         }));
         setApiNodes(converted);
         setError(null);
