@@ -1,17 +1,15 @@
-import React, { useState, useRef, useLayoutEffect } from "react";
+import React, { useState, useRef, useLayoutEffect, useEffect } from "react";
 
 // ─── Config & données ────────────────────────────────────────────────
 import { C, F, KIND_LEVEL } from './config/theme.js';
 import { TC, AC_PALETTE } from './config/palettes.js';
 import { TYPES, CHILDREN_OF, ROOT, INDENT, CASCADE_OFFSET } from './config/constants.js';
 import { CATALOG } from './data/catalog.js';
-import { INITIAL_EDGE_TYPES } from './data/edge-types.js';
-import { INITIAL_ONTOLOGY_TREE } from './data/ontology.js';
-import { initialDerivedProps } from './data/derived-props.js';
+import useSchemaStore from './stores/useSchemaStore.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 import {
-  flattenOntology, findPathForType, getEffectiveProps,
+  findPathForType, getEffectiveProps,
 } from './helpers/ontology.js';
 
 
@@ -56,41 +54,25 @@ export default function App() {
   const [expandedHistory, setExpandedHistory] = useState({}); // { [sourceId]: true } — lignes catalogue dépliées
   const [schemaSelection, setSchemaSelection] = useState({ kind: "node", path: ["Territoire"] }); // { kind: "node"|"edge", path: [...] }
 
-  const [derivedProps, setDerivedProps] = useState(initialDerivedProps);
+  // ─── Schéma depuis le store Zustand (Jalon 6) ──────────────────────
+  // Source de vérité : Postgres via GET /schema. Plus de constantes JS.
+  const schemaStore = useSchemaStore();
+  const { ontologyTree, ontologyFlat, ontologyTypesGrouped, edgeTypesFormatted: edgeTypes } = schemaStore;
+  const { loading: schemaLoading } = schemaStore;
 
-  // Arbre ontologique — state mutable pour permettre l'édition des propriétés intrinsèques (parcours 5 §I6)
-  const [ontologyTree, setOntologyTree] = useState(INITIAL_ONTOLOGY_TREE);
-  // Vue à plat de l'arbre — recalculée à chaque mutation
-  const ontologyFlat = flattenOntology(ontologyTree);
+  // Setters : les mutations passent par le store (API + refetch)
+  const setOntologyTree = () => { /* noop — mutations via store.addProperty/updateProperty/etc */ };
+  const setEdgeTypes = () => { /* noop — mutations via store.addEdgeProperty/etc */ };
 
-  // Types/sous-types groupés par famille, avec profondeur pour indentation dans les <select>.
-  const ontologyTypesGrouped = (() => {
-    const groups = [];
-    for (const [rootKey, rootNode] of Object.entries(ontologyTree)) {
-      const types = [];
-      const walk = (node, depth) => {
-        types.push({ key: node.key, label: node.label, depth });
-        if (node.children) {
-          for (const child of Object.values(node.children)) walk(child, depth + 1);
-        }
-      };
-      walk(rootNode, 0);
-      groups.push({ label: rootKey, types });
-    }
-    return groups;
-  })();
+  // Dérivées — restent en local pour Sprint 2 (dette #14 : pas persistées)
+  const [derivedProps, setDerivedProps] = useState([]);
 
-  // Propriétés effectives (avec héritage) d'un type donné depuis l'arbre ontologique mutable.
-  const getSchemaPropsForType = (type) => {
-    if (!type) return [];
-    const path = findPathForType(ontologyTree, type);
-    return path ? getEffectiveProps(ontologyTree, path) : [];
-  };
+  const getSchemaPropsForType = schemaStore.getSchemaPropsForType;
 
-  const [hoveredTreePath, setHoveredTreePath] = useState(null); // pathKey du nœud survolé dans la sidebar
+  const [hoveredTreePath, setHoveredTreePath] = useState(null);
 
-  // Liste mutable des types d'arêtes (parcours 5 §I6 étape 5)
-  const [edgeTypes, setEdgeTypes] = useState(INITIAL_EDGE_TYPES);
+  // Fetch initial du schéma au montage
+  useEffect(() => { schemaStore.fetchAll(); }, []);
 
   const [sourceConfig, setSourceConfig] = useState({}); // { [sourceId]: { sourceOk, mappingOk, patternsOk, imported, hasError } }
   const [sourceStepper, setSourceStepper] = useState(null); // { sourceId, step, mode: 'create'|'edit' }
