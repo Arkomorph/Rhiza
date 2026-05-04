@@ -2,11 +2,25 @@
 # HTTPS automatique via Let's Encrypt
 
 api.rhiza.ch {
-	# Neo4j Browser (phase 1)
-	# Sera remplacé par le backend Rust/Axum plus tard
-	reverse_proxy neo4j:7474
+	reverse_proxy rhiza-api:3000
 
-	# Headers de sécurité
+	header {
+		X-Content-Type-Options    nosniff
+		X-Frame-Options           SAMEORIGIN
+		Referrer-Policy           strict-origin-when-cross-origin
+		-Server
+	}
+}
+
+app.rhiza.ch {
+	basic_auth {
+		jo $2a$14$4672BP.pA53q.kd9kyr/YONOWxni1PEcP6vpSb//u79vnrvYOFRZa
+	}
+
+	root * /srv/frontend
+	file_server
+	try_files {path} /index.html
+
 	header {
 		X-Content-Type-Options    nosniff
 		X-Frame-Options           SAMEORIGIN
