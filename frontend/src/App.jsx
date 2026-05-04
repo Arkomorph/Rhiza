@@ -6,6 +6,7 @@ import { TC, AC_PALETTE } from './config/palettes.js';
 import { TYPES, CHILDREN_OF, ROOT, INDENT, CASCADE_OFFSET } from './config/constants.js';
 import { CATALOG } from './data/catalog.js';
 import useSchemaStore from './stores/useSchemaStore.js';
+import useTerritoiresStore from './stores/useTerritoiresStore.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 import {
@@ -38,7 +39,8 @@ import log from './logger.js';
 export default function App() {
   const [page, setPage] = useState("login");
   const [section, setSection] = useState("territoires"); // territoires | donnees
-  const [nodes, setNodes] = useState([]);
+  const territoiresStore = useTerritoiresStore();
+  const nodes = territoiresStore.nodes;
   const [createModal, setCreateModal] = useState(null);   // { mode: 'create'|'edit', tab: 'identite'|'configure', type, parentId, nodeId? }
   const [createName, setCreateName] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
@@ -71,8 +73,11 @@ export default function App() {
 
   const [hoveredTreePath, setHoveredTreePath] = useState(null);
 
-  // Fetch initial du schéma au montage
-  useEffect(() => { schemaStore.fetchAll(); }, []);
+  // Fetch initial au montage — schéma + territoires en parallèle
+  useEffect(() => {
+    schemaStore.fetchAll();
+    territoiresStore.fetchAll();
+  }, []);
 
   const [sourceConfig, setSourceConfig] = useState({}); // { [sourceId]: { sourceOk, mappingOk, patternsOk, imported, hasError } }
   const [sourceStepper, setSourceStepper] = useState(null); // { sourceId, step, mode: 'create'|'edit' }
@@ -80,12 +85,9 @@ export default function App() {
   const [addPropModal, setAddPropModal] = useState(null); // { forSourceField } — modale d'ajout ad hoc (mock parcours 5)
   const [addPropDraft, setAddPropDraft] = useState({ key: "", label: "", type: "string" });
 
-  // ─── Renommage d'un nœud (callback de TerritoiresPage) ──────────────
+  // ─── Renommage d'un nœud — stub Sprint 2 (PATCH /territoires non câblé) ──
   const handleNodeRenamed = (nodeId, newName, wasPlaceholder) => {
-    setNodes(nodes.map(n => n.id === nodeId
-      ? { ...n, nom: newName, placeholder: false, status: wasPlaceholder ? "draft" : n.status }
-      : n
-    ));
+    console.warn('[territoires] renommage local — PATCH non câblé Sprint 2');
   };
 
   // ─── Archivage : collecte des descendants récursivement ───────────
@@ -111,7 +113,7 @@ export default function App() {
     //   PostgreSQL : UPDATE territoires SET archived_at = NOW() WHERE id IN (...)
     //   Neo4j : MATCH (n:Territoire) WHERE n.uuid IN [...] SET n:Archived
     //   Les propriétés versionnées et les arêtes restent intactes — on archive la tête.
-    setNodes(nodes.filter(n => !toRemove.has(n.id)));
+    console.warn('[territoires] archivage local — DELETE non câblé Sprint 2');
     setArchiveModal(null);
   };
 
@@ -119,12 +121,7 @@ export default function App() {
   // Le status "active" est dérivé : un nœud avec au moins 1 source liée est actif.
   // Un nœud sans source est brouillon. Le placeholder reste placeholder jusqu'au nommage.
   const toggleSource = (nodeId, sourceId) => {
-    setNodes(nodes.map(n => {
-      if (n.id !== nodeId) return n;
-      const sources = n.sources || [];
-      const next = sources.includes(sourceId) ? sources.filter(s => s !== sourceId) : [...sources, sourceId];
-      return { ...n, sources: next, status: next.length > 0 ? "active" : "draft" };
-    }));
+    console.warn('[territoires] toggleSource local — non câblé Sprint 2');
   };
 
   // ─── Ajout d'une source custom : ajoutée au catalogue + liée au nœud ─
@@ -386,7 +383,7 @@ export default function App() {
         executions: [...execs, newExec],
       }
     }));
-    if (newNodes.length > 0) setNodes(prev => [...prev, ...newNodes]);
+    if (newNodes.length > 0) territoiresStore.fetchAll(); // refetch après import
   };
 
   // ─── Arbre de lignes : mesure les pastilles et construit les paths ───
@@ -436,14 +433,10 @@ export default function App() {
       setLines(ls);
     };
 
-    // Délai pour laisser le DOM se stabiliser après le fetch API
-    const timer = setTimeout(measure, 100);
+    measure();
     const ro = new ResizeObserver(measure);
     ro.observe(container);
-    // MutationObserver pour détecter les changements de contenu (nœuds API chargés)
-    const mo = new MutationObserver(measure);
-    mo.observe(container, { childList: true, subtree: true });
-    return () => { clearTimeout(timer); ro.disconnect(); mo.disconnect(); };
+    return () => ro.disconnect();
   }, [nodes, section]);
 
   // ─── Arbre de lignes SVG pour la modale d'archivage ────────────────
@@ -572,7 +565,7 @@ export default function App() {
         <CreateNodeModal
           createModal={createModal} setCreateModal={setCreateModal}
           createName={createName} setCreateName={setCreateName}
-          nodes={nodes} setNodes={setNodes}
+          nodes={nodes} setNodes={() => console.warn('[territoires] setNodes stub — via store')}
           sourceFilter={sourceFilter} setSourceFilter={setSourceFilter}
           customSources={customSources}
           onToggleSource={toggleSource} onOpenAddSource={setAddSourceModal}

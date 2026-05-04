@@ -13,8 +13,8 @@ function getChildCascade(type) {
   return [CANONICAL.slice(idx + 1)];
 }
 
-// readOnly — Sprint 1 = lecture seule, les mutations sont masquées.
-// Activer en Sprint 2 quand POST/PATCH seront câblés depuis l'UI.
+// readOnly — masque les mutations (crayon, poubelle, cascades "+").
+// Default false depuis Sprint 2 (store Zustand = source de vérité unique).
 export default function TreeNode({
   node, depth, nodes, readOnly = false,
   editingId, editingName, setEditingName,
