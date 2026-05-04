@@ -37,7 +37,7 @@ await sql.begin(async (tx) => {
       `;
       await tx`
         INSERT INTO config.schema_audit (action, resource_type, resource_id, before, source)
-        VALUES ('ARCHIVE', 'expected_edges', ${existing.id},
+        VALUES ('DELETE', 'expected_edges', ${existing.id},
           ${JSON.stringify({ type_key: 'Bâtiment', edge_key: 'ContenuDans', target_type: 'Quartier', obligation: 'soft' })}::jsonb,
           ${SOURCE})
       `;
@@ -68,7 +68,7 @@ await sql.begin(async (tx) => {
       `;
       await tx`
         INSERT INTO config.schema_audit (action, resource_type, resource_id, before, source)
-        VALUES ('ARCHIVE', 'types', 'Logement',
+        VALUES ('DELETE', 'types', 'Logement',
           ${JSON.stringify({ key: 'Logement', label: 'Logement', parent_key: 'Territoire' })}::jsonb,
           ${SOURCE})
       `;
@@ -141,7 +141,7 @@ await sql.begin(async (tx) => {
         `;
         await tx`
           INSERT INTO config.schema_audit (action, resource_type, resource_id, after, source)
-          VALUES ('MIGRATE', 'expected_edges', 'Pièce-ContenuDans',
+          VALUES ('UPDATE', 'expected_edges', 'Pièce-ContenuDans',
             ${JSON.stringify({ from: 'Pièce ContenuDans Logement', to: 'Pièce ContenuDans Unité' })}::jsonb,
             ${SOURCE})
         `;
@@ -223,7 +223,7 @@ await sql.begin(async (tx) => {
     } else {
       await tx`
         INSERT INTO config.schema_audit (action, resource_type, resource_id, after, source)
-        VALUES ('MIGRATE', 'territory_properties', 'nature_history',
+        VALUES ('UPDATE', 'territory_properties', 'nature_history',
           ${JSON.stringify({ corrections: corrected, reason: 'fix Schoenberg sans Secteur + Batiment sans accent' })}::jsonb,
           ${SOURCE})
       `;
