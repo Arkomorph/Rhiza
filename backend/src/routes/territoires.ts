@@ -179,6 +179,7 @@ const territoiresRoutes: FastifyPluginAsync = async (fastify) => {
       subtype?: string;
       geom?: Record<string, unknown>;
       srid?: number;
+      parent_uuid?: string;
       properties?: Record<string, PropertyInput>;
     };
 
@@ -275,12 +276,22 @@ const territoiresRoutes: FastifyPluginAsync = async (fastify) => {
       throw err;
     }
 
-    // 2. Neo4j — créer le nœud avec le même uuid
+    // 2. Neo4j — créer le nœud avec le même uuid + arête CONTENU_DANS si parent_uuid
     try {
-      await runCypher(
-        'CREATE (n:Territoire {uuid: $uuid})',
-        { uuid },
-      );
+      if (body.parent_uuid) {
+        await runCypher(
+          `CREATE (n:Territoire {uuid: $uuid})
+           WITH n
+           MATCH (parent:Territoire {uuid: $parentUuid})
+           CREATE (n)-[:CONTENU_DANS {confidence: 'high', source: $source, date: datetime()}]->(parent)`,
+          { uuid, parentUuid: body.parent_uuid, source: 'api' },
+        );
+      } else {
+        await runCypher(
+          'CREATE (n:Territoire {uuid: $uuid})',
+          { uuid },
+        );
+      }
     } catch (err) {
       // Compensation : supprimer ce qui a été créé dans Postgres
       fastify.log.error({ module: 'territoires', err, uuid }, 'neo4j creation failed, compensating postgres');
