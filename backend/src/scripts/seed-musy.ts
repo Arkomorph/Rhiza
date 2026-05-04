@@ -15,7 +15,10 @@ import sql from '../db/postgres.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SEEDS = resolve(__dirname, '../../seeds/musy');
-const API = 'http://localhost:3000/territoires';
+// En container Docker, utiliser le nom du service. En local, localhost.
+const API = process.env.API_BASE
+  ? `${process.env.API_BASE}/territoires`
+  : 'http://localhost:3000/territoires';
 const SOURCE = 'seed-musy-2026-05-04';
 const CONFIDENCE = 'high';
 
