@@ -7,6 +7,8 @@ import requestLogger from './plugins/request-logger.js';
 import jwtPlugin from './plugins/jwt.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
+import logsRoutes from './routes/logs.js';
+import sourcesRoutes from './routes/sources.js';
 
 const fastify = Fastify({
   logger: {
@@ -27,6 +29,8 @@ await fastify.register(jwtPlugin);
 // Routes
 await fastify.register(healthRoutes);
 await fastify.register(authRoutes, { prefix: '/auth' });
+await fastify.register(logsRoutes, { prefix: '/logs' });
+await fastify.register(sourcesRoutes, { prefix: '/sources' });
 
 // Migration au démarrage
 try {
