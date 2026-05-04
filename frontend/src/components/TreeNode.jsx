@@ -13,11 +13,14 @@ function getChildCascade(type) {
   return [CANONICAL.slice(idx + 1)];
 }
 
+// readOnly — Sprint 1 = lecture seule, les mutations sont masquées.
+// Activer en Sprint 2 quand POST/PATCH seront câblés depuis l'UI.
 export default function TreeNode({
-  node, depth, nodes,
+  node, depth, nodes, readOnly = false,
   editingId, editingName, setEditingName,
   onStartEdit, onCommitEdit, onCancelEdit,
   onEdit, onArchive, onCreateChild,
+  onSelect,
 }) {
   const bc = TC[node.type] || C.muted;
   const children = nodes.filter(n => n.parentId === node.id);
@@ -53,7 +56,7 @@ export default function TreeNode({
           return (
             <div style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${cardBorderColor}`, borderRadius: 8, padding: node.placeholder ? "5px 14px" : "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {editingId === node.id ? (
+                {!readOnly && editingId === node.id ? (
                   <input
                     autoFocus
                     value={editingName}
@@ -73,13 +76,13 @@ export default function TreeNode({
                   />
                 ) : (
                   <span
-                    onClick={() => onStartEdit(node)}
+                    onClick={() => readOnly ? onSelect?.(node) : onStartEdit(node)}
                     style={{
                       fontSize: node.placeholder ? 11 : 13, fontWeight: 600, fontFamily: F.title,
                       textTransform: "uppercase",
                       color: node.placeholder ? C.faint : C.text,
                       fontStyle: !node.permanent && (node.sources || []).length === 0 ? "italic" : "normal",
-                      cursor: node.permanent ? "default" : "text",
+                      cursor: readOnly ? "pointer" : (node.permanent ? "default" : "text"),
                     }}
                   >{node.nom}</span>
                 )}
@@ -92,8 +95,8 @@ export default function TreeNode({
                   const label = node.placeholder ? "à nommer" : nSources === 0 ? "brouillon" : `${nSources} source${nSources > 1 ? "s" : ""}`;
                   return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: active ? C.accentL : C.alt, color: active ? C.accent : C.faint, fontWeight: 600 }}>{label}</span>;
                 })()}
-                {!node.permanent && <span onClick={() => onEdit(node)} style={{ width: 24, textAlign: "center", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }} title={node.placeholder ? "Nommer" : "Éditer"}><Icon name="pencil" size={13} color={C.edit} /></span>}
-                {!node.permanent && <span onClick={() => onArchive(node.id)} style={{ width: 20, textAlign: "center", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }} title="Archiver"><Icon name="trash" size={13} color={C.error} /></span>}
+                {!readOnly && !node.permanent && <span onClick={() => onEdit(node)} style={{ width: 24, textAlign: "center", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }} title={node.placeholder ? "Nommer" : "Éditer"}><Icon name="pencil" size={13} color={C.edit} /></span>}
+                {!readOnly && !node.permanent && <span onClick={() => onArchive(node.id)} style={{ width: 20, textAlign: "center", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }} title="Archiver"><Icon name="trash" size={13} color={C.error} /></span>}
               </div>
             </div>
           );
@@ -103,15 +106,16 @@ export default function TreeNode({
       {/* Children */}
       {children.map(child => (
         <TreeNode
-          key={child.id} node={child} depth={depth + 1} nodes={nodes}
+          key={child.id} node={child} depth={depth + 1} nodes={nodes} readOnly={readOnly}
           editingId={editingId} editingName={editingName} setEditingName={setEditingName}
           onStartEdit={onStartEdit} onCommitEdit={onCommitEdit} onCancelEdit={onCancelEdit}
           onEdit={onEdit} onArchive={onArchive} onCreateChild={onCreateChild}
+          onSelect={onSelect}
         />
       ))}
 
-      {/* + cascade buttons */}
-      {cascades.map((chain, ci) => {
+      {/* + cascade buttons — masqués en readOnly */}
+      {!readOnly && cascades.map((chain, ci) => {
         const firstType = chain[0];
         const bc2 = TC[firstType] || C.faint;
         return (

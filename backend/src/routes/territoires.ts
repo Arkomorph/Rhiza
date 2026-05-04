@@ -137,30 +137,49 @@ const territoiresRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/', async (request) => {
     const { type } = request.query as { type?: string };
 
-    let territoires;
+    // Postgres : territoires + nature_history
+    let pgRows;
     if (type) {
       const pattern = `Territoire:${type}:%`;
-      territoires = await sql`
-        SELECT t.uuid, t.nom, t.created_at, t.archived_at
+      pgRows = await sql`
+        SELECT t.uuid, t.nom, t.created_at, t.archived_at,
+               p.value_text AS nature_history
         FROM metier.territoires t
+        LEFT JOIN metier.properties p
+          ON p.node_uuid = t.uuid
+          AND p.property_name = 'nature_history'
+          AND p.valid_to IS NULL
         WHERE t.archived_at IS NULL
-          AND EXISTS (
-            SELECT 1 FROM metier.properties p
-            WHERE p.node_uuid = t.uuid
-              AND p.property_name = 'nature_history'
-              AND p.valid_to IS NULL
-              AND p.value_text ILIKE ${pattern}
-          )
+          AND p.value_text ILIKE ${pattern}
         ORDER BY t.nom
       `;
     } else {
-      territoires = await sql`
-        SELECT t.uuid, t.nom, t.created_at, t.archived_at
+      pgRows = await sql`
+        SELECT t.uuid, t.nom, t.created_at, t.archived_at,
+               p.value_text AS nature_history
         FROM metier.territoires t
+        LEFT JOIN metier.properties p
+          ON p.node_uuid = t.uuid
+          AND p.property_name = 'nature_history'
+          AND p.valid_to IS NULL
         WHERE t.archived_at IS NULL
         ORDER BY t.nom
       `;
     }
+
+    // Neo4j : parent_uuid pour chaque territoire (une seule requête)
+    const parentRows = await runCypher<{ uuid: string; parent_uuid: string | null }>(
+      `MATCH (n:Territoire)
+       OPTIONAL MATCH (n)-[:CONTENU_DANS]->(p:Territoire)
+       RETURN n.uuid AS uuid, p.uuid AS parent_uuid`,
+    );
+    const parentMap = new Map(parentRows.map(r => [r.uuid, r.parent_uuid]));
+
+    // Assembler
+    const territoires = pgRows.map(t => ({
+      ...t,
+      parent_uuid: parentMap.get(t.uuid as string) ?? null,
+    }));
 
     return { territoires, total: territoires.length };
   });
@@ -175,6 +194,7 @@ const territoiresRoutes: FastifyPluginAsync = async (fastify) => {
       subtype?: string;
       geom?: Record<string, unknown>;
       srid?: number;
+      parent_uuid?: string;
       properties?: Record<string, PropertyInput>;
     };
 
@@ -271,12 +291,22 @@ const territoiresRoutes: FastifyPluginAsync = async (fastify) => {
       throw err;
     }
 
-    // 2. Neo4j — créer le nœud avec le même uuid
+    // 2. Neo4j — créer le nœud avec le même uuid + arête CONTENU_DANS si parent_uuid
     try {
-      await runCypher(
-        'CREATE (n:Territoire {uuid: $uuid})',
-        { uuid },
-      );
+      if (body.parent_uuid) {
+        await runCypher(
+          `CREATE (n:Territoire {uuid: $uuid})
+           WITH n
+           MATCH (parent:Territoire {uuid: $parentUuid})
+           CREATE (n)-[:CONTENU_DANS {confidence: 'high', source: $source, date: datetime()}]->(parent)`,
+          { uuid, parentUuid: body.parent_uuid, source: 'api' },
+        );
+      } else {
+        await runCypher(
+          'CREATE (n:Territoire {uuid: $uuid})',
+          { uuid },
+        );
+      }
     } catch (err) {
       // Compensation : supprimer ce qui a été créé dans Postgres
       fastify.log.error({ module: 'territoires', err, uuid }, 'neo4j creation failed, compensating postgres');
