@@ -35,16 +35,17 @@ const useTerritoiresStore = create((set, get) => ({
       const nodes = list.map(t => {
         const parts = (t.nature_history || '').split(':').filter(Boolean);
         const type = parts[1] || 'Territoire';
+        // Status dérivé : un nœud sans source liée est "draft" (brouillon).
+        // Le proto détermine active via (node.sources.length > 0 && !placeholder).
+        // Sprint 2 : pas de sources liées aux nœuds, donc tous sont "draft".
         return {
           id: t.uuid,
           nom: t.nom,
           type,
-          status: 'active',
+          status: 'draft',
           permanent: false,
           placeholder: false,
           sources: [],
-          // parent_uuid vient du backend (requête Cypher CONTENU_DANS).
-          // Les racines (sans parent Neo4j) sont enfants de ROOT.
           parentId: t.parent_uuid || ROOT_ID,
         };
       });

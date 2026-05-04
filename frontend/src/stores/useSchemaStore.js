@@ -123,18 +123,36 @@ function buildOntologyTypesGrouped(tree) {
 // et reconstruit l'ordre d'imbrication.
 function buildSpatialHierarchy(types, expectedEdges) {
   // Extraire les liens ContenuDans outgoing : type → parent spatial
+  // Pour la chaîne canonique (ordre de profondeur), on prend uniquement
+  // les expected edges 'hard' — les 'soft' sont des raccourcis spatiaux
+  // (ex: Bâtiment ContenuDans Quartier soft = déductible, pas structurel).
   const spatialParent = {};
   for (const ee of expectedEdges) {
-    if (ee.edge_key === 'ContenuDans' && ee.direction === 'outgoing') {
+    if (ee.edge_key === 'ContenuDans' && ee.direction === 'outgoing' && ee.obligation === 'hard') {
       spatialParent[ee.type_key] = ee.target_type;
     }
   }
 
-  // Construire childrenOf (inverse de spatialParent)
-  const childrenOf = {};
+  // childrenOf pour la chaîne canonique (hard uniquement)
+  const hardChildrenOf = {};
   for (const [child, parent] of Object.entries(spatialParent)) {
-    if (!childrenOf[parent]) childrenOf[parent] = [];
-    childrenOf[parent].push(child);
+    if (!hardChildrenOf[parent]) hardChildrenOf[parent] = [];
+    hardChildrenOf[parent].push(child);
+  }
+
+  // childrenOf pour les cascades "+" (hard + soft — tous les ContenuDans)
+  const allSpatialParent = {};
+  for (const ee of expectedEdges) {
+    if (ee.edge_key === 'ContenuDans' && ee.direction === 'outgoing') {
+      if (!allSpatialParent[ee.target_type]) allSpatialParent[ee.target_type] = [];
+      if (!allSpatialParent[ee.target_type].includes(ee.type_key)) {
+        allSpatialParent[ee.target_type].push(ee.type_key);
+      }
+    }
+  }
+  const childrenOf = {};
+  for (const [parent, children] of Object.entries(allSpatialParent)) {
+    childrenOf[parent] = children;
   }
   // Ajouter les types sans enfant avec array vide
   for (const t of types) {
@@ -148,7 +166,7 @@ function buildSpatialHierarchy(types, expectedEdges) {
   const visited = new Set(['Suisse']);
 
   function walk(parentKey) {
-    const children = childrenOf[parentKey] || [];
+    const children = hardChildrenOf[parentKey] || [];
     for (const child of children) {
       if (!visited.has(child)) {
         visited.add(child);
