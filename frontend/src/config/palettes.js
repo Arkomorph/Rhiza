@@ -9,7 +9,7 @@ export const TC = {
   Quartier: "#c49c4e",
   Parcelle: "#6f8270",
   "Bâtiment": "#846056",
-  Logement: "#807184",
+  "Unité": "#807184",
   "Pièce": "#ce5561",
 };
 

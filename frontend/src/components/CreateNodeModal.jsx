@@ -126,7 +126,7 @@ export default function CreateNodeModal({
               autoFocus
               value={createName}
               onChange={e => setCreateName(e.target.value)}
-              placeholder={`ex : ${createModal.type === "Canton" ? "Canton de Fribourg" : createModal.type === "Commune" ? "Ville de Fribourg" : createModal.type === "Quartier" ? "Schönberg" : createModal.type === "Parcelle" ? "Article 1234" : createModal.type === "Bâtiment" ? "Musy bât. 96" : createModal.type === "Logement" ? "Appartement 3.2" : "Cuisine"}`}
+              placeholder={`ex : ${createModal.type === "Canton" ? "Canton de Fribourg" : createModal.type === "Commune" ? "Ville de Fribourg" : createModal.type === "Quartier" ? "Schönberg" : createModal.type === "Parcelle" ? "Article 1234" : createModal.type === "Bâtiment" ? "Musy bât. 96" : createModal.type === "Unité" ? "Appartement 3.2" : "Cuisine"}`}
               style={{ width: "100%", padding: "10px 14px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, outline: "none", boxSizing: "border-box", fontFamily: F.body }}
             />
           </div>

@@ -119,54 +119,31 @@ function buildOntologyTypesGrouped(tree) {
 }
 
 // Calcul de la hiérarchie spatiale depuis les expected_edges ContenuDans.
-// Remonte la chaîne en partant de chaque type qui a un ContenuDans outgoing
-// et reconstruit l'ordre d'imbrication.
+// Après le cleanup Mai 2026, tous les ContenuDans actifs sont hard.
+// Un seul calcul childrenOf suffit (plus de distinction hard/soft).
+// La chaîne canonique est calculée par marche linéaire via childrenOf.
 function buildSpatialHierarchy(types, expectedEdges) {
-  // Extraire les liens ContenuDans outgoing : type → parent spatial
-  // Pour la chaîne canonique (ordre de profondeur), on prend uniquement
-  // les expected edges 'hard' — les 'soft' sont des raccourcis spatiaux
-  // (ex: Bâtiment ContenuDans Quartier soft = déductible, pas structurel).
-  const spatialParent = {};
-  for (const ee of expectedEdges) {
-    if (ee.edge_key === 'ContenuDans' && ee.direction === 'outgoing' && ee.obligation === 'hard') {
-      spatialParent[ee.type_key] = ee.target_type;
-    }
-  }
-
-  // childrenOf pour la chaîne canonique (hard uniquement)
-  const hardChildrenOf = {};
-  for (const [child, parent] of Object.entries(spatialParent)) {
-    if (!hardChildrenOf[parent]) hardChildrenOf[parent] = [];
-    hardChildrenOf[parent].push(child);
-  }
-
-  // childrenOf pour les cascades "+" (hard + soft — tous les ContenuDans)
-  const allSpatialParent = {};
+  // childrenOf : pour chaque type parent, quels types sont "contenus dans" lui
+  const childrenOf = {};
   for (const ee of expectedEdges) {
     if (ee.edge_key === 'ContenuDans' && ee.direction === 'outgoing') {
-      if (!allSpatialParent[ee.target_type]) allSpatialParent[ee.target_type] = [];
-      if (!allSpatialParent[ee.target_type].includes(ee.type_key)) {
-        allSpatialParent[ee.target_type].push(ee.type_key);
+      if (!childrenOf[ee.target_type]) childrenOf[ee.target_type] = [];
+      if (!childrenOf[ee.target_type].includes(ee.type_key)) {
+        childrenOf[ee.target_type].push(ee.type_key);
       }
     }
   }
-  const childrenOf = {};
-  for (const [parent, children] of Object.entries(allSpatialParent)) {
-    childrenOf[parent] = children;
-  }
-  // Ajouter les types sans enfant avec array vide
+  // Types sans enfant → array vide
   for (const t of types) {
     if (!childrenOf[t.key]) childrenOf[t.key] = [];
   }
 
-  // Construire la chaîne canonique en parcourant depuis Suisse (ou Territoire)
-  // Suisse n'est pas un sous-type dans schema_types, c'est le ROOT virtuel.
-  // On cherche les types qui ont ContenuDans → Territoire (= racine spatiale = Canton)
+  // Chaîne canonique par marche linéaire depuis Territoire via childrenOf
   const canonical = ['Suisse'];
   const visited = new Set(['Suisse']);
 
   function walk(parentKey) {
-    const children = hardChildrenOf[parentKey] || [];
+    const children = childrenOf[parentKey] || [];
     for (const child of children) {
       if (!visited.has(child)) {
         visited.add(child);
@@ -176,10 +153,7 @@ function buildSpatialHierarchy(types, expectedEdges) {
     }
   }
 
-  // Commencer par les enfants de Territoire (= racines de la hiérarchie spatiale)
-  // Canton a ContenuDans → Territoire, donc childrenOf["Territoire"] = ["Canton"]
   walk('Territoire');
-  // Si aucun type n'a ContenuDans → Territoire, essayer Suisse
   if (canonical.length === 1) walk('Suisse');
 
   return { canonical, childrenOf };

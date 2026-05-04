@@ -137,12 +137,6 @@ export const INITIAL_ONTOLOGY_TREE = {
             notes: "Tout Bâtiment est sur une Parcelle (RegBL ↔ RF). Si la Parcelle n'existe pas, on la crée comme placeholder.",
           },
           {
-            edgeKey: "ContenuDans", direction: "outgoing", otherSide: ["Territoire", "Quartier"],
-            obligation: "soft", multiplicity: "one",
-            defaultMode: "linkOrCreateField",
-            notes: "Déductible spatialement via ST_Within(empreinte, quartier.limite).",
-          },
-          {
             edgeKey: "HabiteUtilise", direction: "incoming", otherSide: ["Acteur", "Humain"],
             obligation: "soft", multiplicity: "many",
             defaultMode: "linkOrCreateGeneric",
@@ -150,10 +144,11 @@ export const INITIAL_ONTOLOGY_TREE = {
           },
         ],
       },
-      Logement: {
-        key: "Logement", label: "Logement",
+      "Unité": {
+        key: "Unité", label: "Unité",
+        description: "Subdivision fonctionnelle d'un Bâtiment. Neutre sur la fonction (habitation, commerce, industrie). La fonction du Bâtiment est une propriété, pas un sous-type (D8, D14).",
         props: [
-          { key: "ewid", label: "EWID", type: "string", natural_key: true, notes: "Identifiant fédéral des logements." },
+          { key: "ewid", label: "EWID", type: "string", natural_key: true, notes: "Identifiant fédéral des logements (RegBL). Couvre aussi les unités non-résidentielles quand identifiées." },
           { key: "nb_pieces", label: "Nombre de pièces", type: "float", notes: "Demi-pièces possibles." },
           { key: "surface", label: "Surface (m²)", type: "float" },
         ],
@@ -162,13 +157,13 @@ export const INITIAL_ONTOLOGY_TREE = {
             edgeKey: "ContenuDans", direction: "outgoing", otherSide: ["Territoire", "Bâtiment"],
             obligation: "hard", multiplicity: "one",
             defaultMode: "linkOrCreateGeneric",
-            notes: "Tout Logement appartient à un Bâtiment (RegBL).",
+            notes: "Toute Unité appartient à un Bâtiment.",
           },
           {
             edgeKey: "HabiteUtilise", direction: "incoming", otherSide: ["Acteur", "Humain", "Groupe", "Menage"],
             obligation: "soft", multiplicity: "one",
             defaultMode: "linkOrCreateGeneric",
-            notes: "Un Logement est habité par un Ménage (occupation principale).",
+            notes: "Une Unité résidentielle est habitée par un Ménage (occupation principale).",
           },
         ],
       },
@@ -180,10 +175,10 @@ export const INITIAL_ONTOLOGY_TREE = {
         ],
         expectedEdges: [
           {
-            edgeKey: "ContenuDans", direction: "outgoing", otherSide: ["Territoire", "Logement"],
+            edgeKey: "ContenuDans", direction: "outgoing", otherSide: ["Territoire", "Unité"],
             obligation: "hard", multiplicity: "one",
             defaultMode: "linkOrCreateGeneric",
-            notes: "Toute Pièce est dans un Logement.",
+            notes: "Toute Pièce est dans une Unité.",
           },
         ],
       },

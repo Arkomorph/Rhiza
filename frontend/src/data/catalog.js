@@ -50,7 +50,7 @@ export const SCHEMA_PROPS = {
     { key: "position", label: "Position (point d'adresse)", type: "geometry", geomKind: "point" },
     { key: "empreinte", label: "Empreinte au sol", type: "geometry", geomKind: "polygon" },
   ],
-  Logement: [
+  "Unité": [
     { key: "ewid", label: "EWID", type: "string", natural_key: true },
     { key: "nb_pieces", label: "Nombre de pièces", type: "float" },
     { key: "surface", label: "Surface (m²)", type: "float" },

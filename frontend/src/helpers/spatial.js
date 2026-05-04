@@ -3,7 +3,7 @@
 // Les composants récupèrent les données depuis le store et les passent en argument.
 
 export const TYPE_FAMILY = (t) => {
-  if (["Canton", "Commune", "Secteur", "Quartier", "Parcelle", "Bâtiment", "Logement", "Pièce", "Suisse"].includes(t)) return "Territoire";
+  if (["Canton", "Commune", "Secteur", "Quartier", "Parcelle", "Bâtiment", "Unité", "Pièce", "Suisse"].includes(t)) return "Territoire";
   return t;
 };
 

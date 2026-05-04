@@ -37,8 +37,8 @@ if (existing) {
 
 // ── 2. Expected edges ContenuDans manquantes ─────────────────────────
 // Chaîne complète : Canton→Suisse, Commune→Canton, Secteur→Commune,
-// Quartier→Secteur, Pièce→Logement
-// (Parcelle→Quartier, Bâtiment→Parcelle, Logement→Bâtiment existent déjà)
+// Quartier→Secteur, Pièce→Unité (anciennement Logement)
+// (Parcelle→Quartier, Bâtiment→Parcelle, Unité→Bâtiment existent déjà)
 
 const EDGES_TO_ADD = [
   { type_key: 'Canton', target_type: 'Territoire', notes: 'Tout Canton est contenu dans la Suisse.' },

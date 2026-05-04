@@ -7,15 +7,21 @@ import { lighten } from '../helpers/colors.js';
 import Icon from './Icon.jsx';
 import useSchemaStore from '../stores/useSchemaStore.js';
 
-function getChildCascade(type, childrenOf, canonical) {
-  // Enfants directs depuis la hiérarchie spatiale (expected edges ContenuDans)
-  const directChildren = childrenOf[type] || [];
-  if (directChildren.length === 0) return [];
-  // Construire la chaîne complète depuis chaque enfant direct
-  const idx = canonical.indexOf(type);
-  if (idx === -1) return [];
-  const rest = canonical.slice(idx + 1);
-  return rest.length > 0 ? [rest] : [];
+// Cascade descendante depuis childrenOf (D13 — hiérarchie spatiale seule).
+// Récursion linéaire : un seul enfant direct par niveau (chaîne spatiale).
+function getChildCascade(type, childrenOf) {
+  const chain = [];
+  let current = type;
+  while (true) {
+    const children = childrenOf[current] || [];
+    if (children.length === 0) break;
+    if (children.length > 1) {
+      console.warn(`[cascade] ${current} a ${children.length} enfants directs — comportement non spécifié`);
+    }
+    chain.push(children[0]);
+    current = children[0];
+  }
+  return chain.length > 0 ? [chain] : [];
 }
 
 // readOnly — masque les mutations (crayon, poubelle, cascades "+").
@@ -27,10 +33,10 @@ export default function TreeNode({
   onEdit, onArchive, onCreateChild,
   onSelect,
 }) {
-  const { territoireChildrenOf, territoireCanonical } = useSchemaStore();
+  const { territoireChildrenOf } = useSchemaStore();
   const bc = TC[node.type] || C.muted;
   const children = nodes.filter(n => n.parentId === node.id);
-  const cascades = getChildCascade(node.type, territoireChildrenOf, territoireCanonical);
+  const cascades = getChildCascade(node.type, territoireChildrenOf);
 
   return (
     <div style={{ marginLeft: depth > 0 ? INDENT : 0 }}>

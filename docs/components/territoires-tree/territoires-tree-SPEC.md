@@ -49,11 +49,11 @@ Sous un nœud de sous-type X, afficher en cascade :
 
 Exemples attendus à l'état actuel du Schéma :
 
-- Sous **Suisse (root)** : `+ Canton  Commune  Secteur  Quartier  Parcelle  Bâtiment  Logement  Pièce`
-- Sous **Schoenberg (Secteur)** : `+ Quartier  Parcelle  Bâtiment  Logement  Pièce`
-- Sous **Musy (Quartier)** : `+ Parcelle  Bâtiment  Logement  Pièce`
-- Sous **Parcelle 14345** : `+ Bâtiment  Logement  Pièce`
-- Sous **Musy 5 (Bâtiment)** : `+ Logement  Pièce`
+- Sous **Suisse (root)** : `+ Canton  Commune  Secteur  Quartier  Parcelle  Bâtiment  Unité  Pièce`
+- Sous **Schoenberg (Secteur)** : `+ Quartier  Parcelle  Bâtiment  Unité  Pièce`
+- Sous **Musy (Quartier)** : `+ Parcelle  Bâtiment  Unité  Pièce`
+- Sous **Parcelle 14345** : `+ Bâtiment  Unité  Pièce`
+- Sous **Musy 5 (Bâtiment)** : `+ Unité  Pièce`
 
 Le clic sur un `+` matérialise un nœud "à créer" — l'utilisateur le renomme ensuite.
 
