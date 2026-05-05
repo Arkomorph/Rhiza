@@ -5,6 +5,7 @@ import { TC } from '../config/palettes.js';
 import { ROOT } from '../config/constants.js';
 import { CATALOG } from '../data/catalog.js';
 import { getIntermediaryTypes } from '../helpers/spatial.js';
+import useSchemaStore from '../stores/useSchemaStore.js';
 import Icon from './Icon.jsx';
 import ModalShell from './ModalShell.jsx';
 
@@ -22,6 +23,7 @@ export default function CreateNodeModal({
   customSources,
   onToggleSource, onOpenAddSource,
 }) {
+  const { territoireCanonical } = useSchemaStore();
   const currentNode = createModal.nodeId ? nodes.find(n => n.id === createModal.nodeId) : null;
   const canConfigure = !!currentNode && !currentNode.placeholder;
 
@@ -60,7 +62,7 @@ export default function CreateNodeModal({
     }
 
     const parentType = createModal.parentId === ROOT.id ? "Suisse" : nodes.find(n => n.id === createModal.parentId)?.type || "Suisse";
-    const intermediaries = getIntermediaryTypes(parentType, createModal.type);
+    const intermediaries = getIntermediaryTypes(parentType, createModal.type, territoireCanonical);
 
     const newNodes = [];
     let currentParentId = createModal.parentId;
@@ -142,7 +144,7 @@ export default function CreateNodeModal({
           </div>
           {createModal.mode === "create" && (() => {
             const parentType = createModal.parentId === ROOT.id ? "Suisse" : nodes.find(n => n.id === createModal.parentId)?.type || "Suisse";
-            const ints = getIntermediaryTypes(parentType, createModal.type);
+            const ints = getIntermediaryTypes(parentType, createModal.type, territoireCanonical);
             return (
               <div style={{ fontSize: 10, color: C.faint, background: C.infoL, padding: "8px 10px", borderRadius: 5, marginBottom: 16, lineHeight: 1.7 }}>
                 {ints.length > 0 && <div style={{ marginBottom: 4 }}>
