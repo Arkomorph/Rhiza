@@ -9,7 +9,7 @@ import sql from '../db/postgres.js';
 import { runCypher } from '../db/neo4j.js';
 import { migrate } from '../db/migrate.js';
 
-const SOURCE = 'migration-D15-2026-05-05';
+const SOURCE = 'migration';
 const API = process.env.API_BASE
   ? `${process.env.API_BASE}/territoires`
   : 'http://localhost:3000/territoires';
