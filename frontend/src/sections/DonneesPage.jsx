@@ -31,17 +31,16 @@ export default function DonneesPage({
   const [archivedCount, setArchivedCount] = useState(0);
   const [deleteModal, setDeleteModal] = useState(null); // { id, nom } ou null
 
-  // Compteur d'archivées au montage et après chaque mutation
+  // Compteur d'archivées — fetch une fois au montage
   useEffect(() => {
     fetch(`${API_BASE}/sources?include_archived=true`)
       .then(r => r.ok ? r.json() : { sources: [] })
       .then(d => {
         const archived = (d.sources || []).filter(s => s.archived_at);
         setArchivedCount(archived.length);
-        if (showArchived) setArchivedSources(archived);
       })
       .catch(() => {});
-  }, [sources.length]); // refetch quand le nombre de sources actives change
+  }, []);
 
   const confirmDelete = async () => {
     if (!deleteModal) return;
@@ -51,14 +50,13 @@ export default function DonneesPage({
     try {
       console.log(`[DonneesPage] archiving ${deletedId}...`);
       await sourcesStore.deleteSource(deletedId);
-      console.log(`[DonneesPage] archived ${deletedId}, sources count: ${sourcesStore.sources.length}`);
-      // Refetch les archivées si le toggle est actif
-      if (showArchived) {
-        const r = await fetch(`${API_BASE}/sources?include_archived=true`);
-        if (r.ok) {
-          const d = await r.json();
-          setArchivedSources((d.sources || []).filter(s => s.archived_at));
-        }
+      // Mettre à jour le compteur et la liste des archivées
+      const r = await fetch(`${API_BASE}/sources?include_archived=true`);
+      if (r.ok) {
+        const d = await r.json();
+        const archived = (d.sources || []).filter(s => s.archived_at);
+        setArchivedCount(archived.length);
+        if (showArchived) setArchivedSources(archived);
       }
     } catch (err) {
       console.error('[DonneesPage] delete failed', err);
