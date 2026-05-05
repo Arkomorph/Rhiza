@@ -436,15 +436,16 @@ export default function App() {
       setLines(ls);
     };
 
-    // Mesure initiale après que React a peint les pastilles.
-    // Le useEffect se re-déclenche quand `nodes` change (fetch async),
-    // donc les pastilles sont dans le DOM à ce moment.
-    // setTimeout 0 laisse le navigateur peindre avant de mesurer.
+    // setTimeout 0 laisse le navigateur peindre les pastilles avant de mesurer.
+    // Dépendances : nodes ET schemaLoading — le loading gate dans TerritoiresPage
+    // empêche le rendu des pastilles tant que le schéma n'est pas chargé.
+    // Sans schemaLoading dans les deps, le useEffect ne se re-déclenche pas
+    // quand le schéma arrive et les pastilles apparaissent.
     const timer = setTimeout(measure, 0);
     const ro = new ResizeObserver(measure);
     ro.observe(container);
     return () => { clearTimeout(timer); ro.disconnect(); };
-  }, [nodes, section]);
+  }, [nodes, section, schemaLoading]);
 
   // ─── Arbre de lignes SVG pour la modale d'archivage ────────────────
   useLayoutEffect(() => {
