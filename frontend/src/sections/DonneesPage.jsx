@@ -1,13 +1,14 @@
 // ─── Section Données — catalogue des sources (J8a) ───────────────────
 // Layout 2 colonnes : arbre latéral type/sous-type (filtre) + DataTable.
 // Données depuis useSourcesStore (Zustand). Plus de CATALOG hardcodé.
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { C, F } from '../config/theme.js';
 import { TC } from '../config/palettes.js';
 import DataTable from '../components/DataTable.jsx';
 import Icon from '../components/Icon.jsx';
 import useSourcesStore from '../stores/useSourcesStore.js';
 import useSchemaStore from '../stores/useSchemaStore.js';
+import ModalShell from '../components/ModalShell.jsx';
 
 const STATUT_LABEL = { brouillon: "brouillon", configuree: "configurée", en_service: "en service", erreur: "erreur" };
 const STATUT_STYLE = {
@@ -22,8 +23,20 @@ export default function DonneesPage({
 }) {
   const { sources, loading, error, sourcesByTargetType, sourcesUncategorized } = useSourcesStore();
   const { territoireCanonical, ontologyTypesGrouped } = useSchemaStore();
+  const { deleteSource } = useSourcesStore();
   const [selectedType, setSelectedType] = useState(null);
   const [dataFilter, setDataFilter] = useState("");
+  const [deleteModal, setDeleteModal] = useState(null); // { id, nom } ou null
+
+  const confirmDelete = useCallback(async () => {
+    if (!deleteModal) return;
+    try {
+      await deleteSource(deleteModal.id);
+    } catch (err) {
+      console.error('[sources] delete failed', err);
+    }
+    setDeleteModal(null);
+  }, [deleteModal, deleteSource]);
 
   // Sources filtrées par type sélectionné + recherche texte
   const typeFiltered = selectedType
@@ -66,13 +79,20 @@ export default function DonneesPage({
         </span>
       );
     }},
-    { key: "_actions", label: "", width: "70px", render: row => (
+    { key: "_actions", label: "", width: "90px", render: row => (
       <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
         <span style={{ opacity: 0.3, cursor: "not-allowed" }} title="Exécuter — à venir J8b">
           <Icon name="play" size={12} color={C.faint} />
         </span>
         <span style={{ opacity: 0.3, cursor: "not-allowed" }} title="Configurer — à venir J7">
           <Icon name="pencil" size={12} color={C.faint} />
+        </span>
+        <span
+          onClick={() => setDeleteModal({ id: row.id, nom: row.nom })}
+          style={{ cursor: "pointer" }}
+          title="Archiver cette source"
+        >
+          <Icon name="trash" size={12} color={C.error} />
         </span>
       </span>
     )},
@@ -140,6 +160,17 @@ export default function DonneesPage({
           </div>
         )}
 
+        {/* Filtre Synchronisables — Sprint 2: toujours 0 (patterns = J7) */}
+        <div
+          style={{
+            fontSize: 11, padding: "4px 8px", borderRadius: 4, marginTop: 4,
+            opacity: 0.4, cursor: "not-allowed", color: C.faint, fontStyle: "italic",
+          }}
+          title="Disponible quand des patterns seront configurés (J7)"
+        >
+          Synchronisables (0)
+        </div>
+
         {/* Bouton synchro groupe — placeholder J7 */}
         <div style={{ marginTop: 16, borderTop: `1px solid ${C.blight}`, paddingTop: 8 }}>
           <span style={{ fontSize: 10, color: C.faint, opacity: 0.4, cursor: "not-allowed" }} title="Synchroniser les patterns — à venir J7">
@@ -174,9 +205,15 @@ export default function DonneesPage({
           style={{ width: "100%", padding: "10px 14px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, outline: "none", marginBottom: 16, boxSizing: "border-box", fontFamily: F.body }}
         />
 
-        {/* Résultats */}
-        <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, marginBottom: 8 }}>
-          {dataFilter || selectedType ? `${filtered.length} résultat${filtered.length !== 1 ? "s" : ""}` : "Toutes les sources"}
+        {/* Résultats + bouton synchro général */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint }}>
+            {dataFilter || selectedType ? `${filtered.length} résultat${filtered.length !== 1 ? "s" : ""}` : "Toutes les sources"}
+          </div>
+          <span
+            style={{ fontSize: 11, padding: "4px 10px", borderRadius: 5, opacity: 0.3, cursor: "not-allowed", color: C.faint, border: `1px solid ${C.blight}` }}
+            title="Synchroniser les patterns de toutes les sources affichées — à venir J7"
+          >↻ Synchro patterns</span>
         </div>
 
         <DataTable
@@ -186,6 +223,30 @@ export default function DonneesPage({
           emptyMessage={loading ? "Chargement..." : "Aucune source ne correspond au filtre."}
         />
       </div>
+
+      {/* Modale de confirmation de suppression */}
+      {deleteModal && (
+        <ModalShell title="Archiver la source" onClose={() => setDeleteModal(null)}>
+          <div style={{ padding: "16px 20px" }}>
+            <p style={{ fontSize: 13, color: C.text, marginBottom: 16 }}>
+              Archiver la source <strong>{deleteModal.nom}</strong> ({deleteModal.id}) ?
+            </p>
+            <p style={{ fontSize: 11, color: C.muted, marginBottom: 20 }}>
+              Cette action est réversible (la source reste en base avec le statut archivé).
+            </p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setDeleteModal(null)}
+                style={{ fontSize: 12, padding: "6px 14px", border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: "pointer" }}
+              >Annuler</button>
+              <button
+                onClick={confirmDelete}
+                style={{ fontSize: 12, padding: "6px 14px", border: "none", borderRadius: 6, background: C.error, color: "#fff", cursor: "pointer", fontWeight: 600 }}
+              >Archiver</button>
+            </div>
+          </div>
+        </ModalShell>
+      )}
     </div>
   );
 }
