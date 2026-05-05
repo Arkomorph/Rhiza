@@ -10,6 +10,8 @@ import useSourcesStore from '../stores/useSourcesStore.js';
 import useSchemaStore from '../stores/useSchemaStore.js';
 import ModalShell from '../components/ModalShell.jsx';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'https://api.rhiza.ch';
+
 const STATUT_LABEL = { brouillon: "brouillon", configuree: "configurée", en_service: "en service", erreur: "erreur" };
 const STATUT_STYLE = {
   brouillon: { bg: C.alt, fg: C.faint },
