@@ -21,27 +21,52 @@ const STATUT_STYLE = {
 export default function DonneesPage({
   openSourceStepperCreate, openSourceStepperEdit,
 }) {
-  const { sources, loading, error, sourcesByTargetType, sourcesUncategorized } = useSourcesStore();
+  const { sources, loading, error, sourcesByTargetType, sourcesUncategorized, fetchAll: refetchSources } = useSourcesStore();
   const { territoireCanonical, ontologyTypesGrouped } = useSchemaStore();
   const { deleteSource } = useSourcesStore();
   const [selectedType, setSelectedType] = useState(null);
   const [dataFilter, setDataFilter] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivedSources, setArchivedSources] = useState([]);
   const [deleteModal, setDeleteModal] = useState(null); // { id, nom } ou null
 
   const confirmDelete = useCallback(async () => {
     if (!deleteModal) return;
     try {
       await deleteSource(deleteModal.id);
+      // Refetch les archivées si le toggle est actif
+      if (showArchived) {
+        const r = await fetch(`${API_BASE}/sources?include_archived=true`);
+        if (r.ok) {
+          const d = await r.json();
+          setArchivedSources((d.sources || []).filter(s => s.archived_at));
+        }
+      }
     } catch (err) {
       console.error('[sources] delete failed', err);
     }
     setDeleteModal(null);
-  }, [deleteModal, deleteSource]);
+  }, [deleteModal, deleteSource, showArchived]);
+
+  // Fetch archivées quand toggle activé
+  const toggleArchived = useCallback(async () => {
+    if (!showArchived) {
+      const r = await fetch(`${API_BASE}/sources?include_archived=true`);
+      if (r.ok) {
+        const d = await r.json();
+        setArchivedSources((d.sources || []).filter(s => s.archived_at));
+      }
+    }
+    setShowArchived(!showArchived);
+  }, [showArchived]);
+
+  // Sources à afficher : actives + archivées si toggle
+  const displaySources = showArchived ? [...sources, ...archivedSources] : sources;
 
   // Sources filtrées par type sélectionné + recherche texte
   const typeFiltered = selectedType
-    ? sources.filter(s => s.target_type === selectedType)
-    : sources;
+    ? displaySources.filter(s => s.target_type === selectedType)
+    : displaySources;
 
   const filtered = typeFiltered.filter(s => {
     if (!dataFilter) return true;
@@ -67,6 +92,9 @@ export default function DonneesPage({
       </span>
     )},
     { key: "statut", label: "Statut", width: "0.8fr", render: row => {
+      if (row.archived_at) {
+        return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: "#fdf0f0", color: C.error, fontWeight: 600, textDecoration: "line-through" }}>archivée</span>;
+      }
       const st = STATUT_STYLE[row.status] || STATUT_STYLE.brouillon;
       return (
         <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
@@ -87,13 +115,15 @@ export default function DonneesPage({
         <span style={{ opacity: 0.3, cursor: "not-allowed" }} title="Configurer — à venir J7">
           <Icon name="pencil" size={12} color={C.faint} />
         </span>
-        <span
-          onClick={() => setDeleteModal({ id: row.id, nom: row.nom })}
-          style={{ cursor: "pointer" }}
-          title="Archiver cette source"
-        >
-          <Icon name="trash" size={12} color={C.error} />
-        </span>
+        {!row.archived_at && (
+          <span
+            onClick={() => setDeleteModal({ id: row.id, nom: row.nom })}
+            style={{ cursor: "pointer" }}
+            title="Archiver cette source"
+          >
+            <Icon name="trash" size={12} color={C.error} />
+          </span>
+        )}
       </span>
     )},
   ];
@@ -159,6 +189,18 @@ export default function DonneesPage({
             Sans type ({sourcesUncategorized.length})
           </div>
         )}
+
+        {/* Toggle archivées */}
+        <div
+          onClick={toggleArchived}
+          style={{
+            fontSize: 11, padding: "4px 8px", borderRadius: 4, cursor: "pointer", marginTop: 8,
+            background: showArchived ? C.alt : "transparent",
+            color: showArchived ? C.error : C.faint, fontStyle: "italic",
+          }}
+        >
+          {showArchived ? `✕ Masquer archivées (${archivedSources.length})` : `Voir archivées`}
+        </div>
 
         {/* Filtre Synchronisables — Sprint 2: toujours 0 (patterns = J7) */}
         <div
