@@ -2,16 +2,20 @@
 import React from 'react';
 import { C, F } from '../config/theme.js';
 import { TC } from '../config/palettes.js';
-import { ROOT } from '../config/constants.js';
 import { CATALOG } from '../data/catalog.js';
 import { getIntermediaryTypes } from '../helpers/spatial.js';
+import useSchemaStore from '../stores/useSchemaStore.js';
 import Icon from './Icon.jsx';
 import ModalShell from './ModalShell.jsx';
 
 function getParentName(parentId, nodes) {
-  if (parentId === ROOT.id) return ROOT.nom;
   const p = nodes.find(n => n.id === parentId);
   return p ? p.nom : "—";
+}
+
+function isRoot(parentId, nodes) {
+  const p = nodes.find(n => n.id === parentId);
+  return p?.permanent ?? false;
 }
 
 export default function CreateNodeModal({
@@ -22,6 +26,7 @@ export default function CreateNodeModal({
   customSources,
   onToggleSource, onOpenAddSource,
 }) {
+  const { territoireCanonical } = useSchemaStore();
   const currentNode = createModal.nodeId ? nodes.find(n => n.id === createModal.nodeId) : null;
   const canConfigure = !!currentNode && !currentNode.placeholder;
 
@@ -59,8 +64,8 @@ export default function CreateNodeModal({
       return;
     }
 
-    const parentType = createModal.parentId === ROOT.id ? "Suisse" : nodes.find(n => n.id === createModal.parentId)?.type || "Suisse";
-    const intermediaries = getIntermediaryTypes(parentType, createModal.type);
+    const parentType = nodes.find(n => n.id === createModal.parentId)?.type || "Suisse";
+    const intermediaries = getIntermediaryTypes(parentType, createModal.type, territoireCanonical);
 
     const newNodes = [];
     let currentParentId = createModal.parentId;
@@ -126,7 +131,7 @@ export default function CreateNodeModal({
               autoFocus
               value={createName}
               onChange={e => setCreateName(e.target.value)}
-              placeholder={`ex : ${createModal.type === "Canton" ? "Canton de Fribourg" : createModal.type === "Commune" ? "Ville de Fribourg" : createModal.type === "Quartier" ? "Schönberg" : createModal.type === "Parcelle" ? "Article 1234" : createModal.type === "Bâtiment" ? "Musy bât. 96" : createModal.type === "Logement" ? "Appartement 3.2" : "Cuisine"}`}
+              placeholder={`ex : ${createModal.type === "Canton" ? "Canton de Fribourg" : createModal.type === "Commune" ? "Ville de Fribourg" : createModal.type === "Quartier" ? "Schönberg" : createModal.type === "Parcelle" ? "Article 1234" : createModal.type === "Bâtiment" ? "Musy bât. 96" : createModal.type === "Unité" ? "Appartement 3.2" : "Cuisine"}`}
               style={{ width: "100%", padding: "10px 14px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, outline: "none", boxSizing: "border-box", fontFamily: F.body }}
             />
           </div>
@@ -141,8 +146,8 @@ export default function CreateNodeModal({
             </div>
           </div>
           {createModal.mode === "create" && (() => {
-            const parentType = createModal.parentId === ROOT.id ? "Suisse" : nodes.find(n => n.id === createModal.parentId)?.type || "Suisse";
-            const ints = getIntermediaryTypes(parentType, createModal.type);
+            const parentType = nodes.find(n => n.id === createModal.parentId)?.type || "Suisse";
+            const ints = getIntermediaryTypes(parentType, createModal.type, territoireCanonical);
             return (
               <div style={{ fontSize: 10, color: C.faint, background: C.infoL, padding: "8px 10px", borderRadius: 5, marginBottom: 16, lineHeight: 1.7 }}>
                 {ints.length > 0 && <div style={{ marginBottom: 4 }}>

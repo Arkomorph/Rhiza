@@ -1,66 +1,28 @@
 // ─── Section Territoires — arbre hiérarchique + détail API ───────────
-// Sprint 1 : lecture seule. L'arbre affiche les territoires depuis l'API.
-// Le clic sur un nœud fetch le détail (propriétés + relations).
-// Les mutations (créer, renommer, archiver) sont masquées (readOnly).
-import React, { useState, useEffect } from 'react';
+// Données depuis useTerritoiresStore (Zustand).
+// Clic sur un nœud → fetch détail (propriétés + relations).
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { C, F, KIND_LEVEL } from '../config/theme.js';
 import { TC } from '../config/palettes.js';
-import { TYPES, ROOT } from '../config/constants.js';
+import useSchemaStore from '../stores/useSchemaStore.js';
 import { lighten } from '../helpers/colors.js';
 import TreeNode from '../components/TreeNode.jsx';
 import DataTable from '../components/DataTable.jsx';
+import useTerritoiresStore from '../stores/useTerritoiresStore.js';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.rhiza.ch';
 
-// nature_history "Territoire:Quartier:" → "Quartier"
-// Perd les sous-niveaux (dette acceptée — Sprint 2 quand multi-niveaux peuplés)
-function extractType(natureHistory) {
-  if (!natureHistory) return "Territoire";
-  const parts = natureHistory.split(':').filter(Boolean);
-  return parts[1] || "Territoire";
-}
-
 export default function TerritoiresPage({
-  treeRef, lines, nodes: _legacyNodes,
   onNodeRenamed, onEdit, onArchive, onCreateChild,
 }) {
-  const [apiNodes, setApiNodes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { nodes, loading, error } = useTerritoiresStore();
+  const { territoireSubtypes, loading: schemaLoading } = useSchemaStore();
+  const rootNode = nodes.find(n => n.parentId === null);
+  const treeRef = useRef(null);
+  const [lines, setLines] = useState([]);
   const [selectedUuid, setSelectedUuid] = useState(null);
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-
-  // Fetch liste des territoires — un seul appel, parent_uuid inclus côté backend
-  useEffect(() => {
-    fetch(`${API_BASE}/territoires`)
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then(data => {
-        const converted = (data.territoires || []).map(t => ({
-          id: t.uuid,
-          nom: t.nom,
-          type: extractType(t.nature_history),
-          status: "active",
-          permanent: false,
-          placeholder: false,
-          sources: [],
-          // parent_uuid vient du backend (requête Cypher CONTENU_DANS).
-          // Les racines (sans parent Neo4j) sont enfants de ROOT.
-          parentId: t.parent_uuid || ROOT.id,
-        }));
-        setApiNodes(converted);
-        setError(null);
-      })
-      .catch(err => {
-        console.error('[territoires] fetch failed', err);
-        setError("Impossible de charger les territoires");
-        setApiNodes([]);
-      })
-      .finally(() => setLoading(false));
-  }, []);
 
   // Fetch détail au clic
   useEffect(() => {
@@ -79,14 +41,75 @@ export default function TerritoiresPage({
       .finally(() => setDetailLoading(false));
   }, [selectedUuid]);
 
-  const nodes = apiNodes;
-
-  // Inline editing state (conservé pour compatibilité, inactif en readOnly)
+  // Inline editing state (conservé pour compatibilité)
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState("");
-  const startEdit = () => {};
-  const commitEdit = () => {};
-  const cancelEdit = () => {};
+  const startEdit = (node) => {
+    if (node.permanent) return;
+    setEditingId(node.id);
+    setEditingName(node.placeholder ? "" : node.nom);
+  };
+  const commitEdit = () => {
+    if (!editingId) return;
+    const name = editingName.trim();
+    if (name) onNodeRenamed(editingId, name, false);
+    setEditingId(null);
+    setEditingName("");
+  };
+  const cancelEdit = () => { setEditingId(null); setEditingName(""); };
+
+  // ─── Lignes SVG — mesure des pastilles après rendu ─────────────────
+  // useLayoutEffect dans le même composant que TreeNode : les pastilles
+  // sont garanties d'être dans le DOM au moment de la mesure.
+  useLayoutEffect(() => {
+    const container = treeRef.current;
+    if (!container || loading || schemaLoading || !rootNode) { setLines([]); return; }
+
+    const measure = () => {
+      const cRect = container.getBoundingClientRect();
+      const els = container.querySelectorAll("[data-pastille]");
+      const pos = {};
+      els.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        pos[el.dataset.pastille] = {
+          x: rect.left - cRect.left + rect.width / 2,
+          y: rect.top - cRect.top + rect.height / 2,
+          r: rect.width / 2,
+          parentKey: el.dataset.parent,
+          color: el.dataset.color,
+          dashed: el.hasAttribute("data-dashed"),
+          status: el.dataset.status,
+          placeholder: el.hasAttribute("data-placeholder"),
+        };
+      });
+
+      const ls = [];
+      Object.values(pos).forEach(p => {
+        if (p.parentKey && pos[p.parentKey]) {
+          const parent = pos[p.parentKey];
+          let kind;
+          if (p.dashed) kind = "cascade";
+          else if (p.placeholder) kind = "placeholder";
+          else if (p.status === "active") kind = "active";
+          else kind = "draft";
+          ls.push({
+            fx: parent.x, fy: parent.y, fr: parent.r,
+            tx: p.x, ty: p.y, tr: p.r,
+            color: p.color,
+            kind,
+          });
+        }
+      });
+      const order = { cascade: 0, placeholder: 1, draft: 2, active: 3 };
+      ls.sort((a, b) => order[a.kind] - order[b.kind]);
+      setLines(ls);
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [nodes, loading, schemaLoading, rootNode]);
 
   // Colonnes du DataTable pour les propriétés
   const propColumns = [
@@ -105,35 +128,27 @@ export default function TerritoiresPage({
     }},
   ];
 
-  // Colonnes du DataTable pour les relations
   const relColumns = [
     { key: "type", label: "Type", width: "1.2fr", render: r => (
       <span style={{ fontWeight: 600, fontSize: 11 }}>{r.type}</span>
     )},
     { key: "direction", label: "Direction", width: "0.6fr", render: r => (
-      <span style={{ fontSize: 10, color: C.muted }}>{r.outgoing ? "→ sortante" : "← entrante"}</span>
+      <span style={{ fontSize: 10, color: C.muted }}>{r.outgoing ? "sortante" : "entrante"}</span>
     )},
     { key: "target_uuid", label: "Cible", width: "1.4fr", render: r => (
-      <span style={{ fontSize: 10, fontFamily: "monospace" }}>{r.target_uuid?.slice(0, 8)}… [{(r.target_labels || []).join(', ')}]</span>
+      <span style={{ fontSize: 10, fontFamily: "monospace" }}>{r.target_uuid?.slice(0, 8)}…</span>
     )},
     { key: "confidence", label: "Confiance", width: "0.6fr", render: r => (
       <span style={{ fontSize: 10, color: C.muted }}>{r.confidence || "—"}</span>
     )},
   ];
 
-  // Convertir detail.properties en lignes pour le DataTable
   const propRows = detail ? Object.entries(detail.properties || {}).map(([key, p]) => ({
-    _key: key,
-    property: key,
-    value: p.value,
-    source: p.source,
-    confidence: p.confidence,
+    _key: key, property: key, value: p.value, source: p.source, confidence: p.confidence,
   })) : [];
 
   const relRows = detail ? (detail.relations || []).map((r, i) => ({
-    _key: `rel-${i}`,
-    ...r,
-    direction: r.outgoing ? "sortante" : "entrante",
+    _key: `rel-${i}`, ...r,
   })) : [];
 
   return (
@@ -166,15 +181,19 @@ export default function TerritoiresPage({
         </div>
       </div>
 
-      {/* Arbre depuis ROOT */}
+      {/* Arbre depuis la racine (Suisse = vrai nœud en base, D15) */}
       <div style={{ position: "relative", zIndex: 1 }}>
-        <TreeNode
-          node={ROOT} depth={0} nodes={nodes} readOnly
-          editingId={editingId} editingName={editingName} setEditingName={setEditingName}
-          onStartEdit={startEdit} onCommitEdit={commitEdit} onCancelEdit={cancelEdit}
-          onEdit={onEdit} onArchive={onArchive} onCreateChild={onCreateChild}
-          onSelect={(node) => !node.permanent && setSelectedUuid(node.id)}
-        />
+        {(loading || schemaLoading || !rootNode) ? (
+          <div style={{ fontSize: 11, color: C.faint, padding: 20 }}>Chargement de l'arbre...</div>
+        ) : (
+          <TreeNode
+            node={rootNode} depth={0} nodes={nodes}
+            editingId={editingId} editingName={editingName} setEditingName={setEditingName}
+            onStartEdit={startEdit} onCommitEdit={commitEdit} onCancelEdit={cancelEdit}
+            onEdit={onEdit} onArchive={onArchive} onCreateChild={onCreateChild}
+            onSelect={(node) => !node.permanent && setSelectedUuid(node.id)}
+          />
+        )}
       </div>
 
       {/* Panneau de détail */}
@@ -189,26 +208,17 @@ export default function TerritoiresPage({
                   <div style={{ fontSize: 14, fontWeight: 600, fontFamily: F.title, textTransform: "uppercase" }}>{detail.nom}</div>
                   <div style={{ fontSize: 10, color: C.muted, marginTop: 2, fontFamily: "monospace" }}>{detail.uuid}</div>
                 </div>
-                <span
-                  onClick={() => setSelectedUuid(null)}
-                  style={{ fontSize: 11, color: C.faint, cursor: "pointer", padding: "4px 8px" }}
-                >✕ fermer</span>
+                <span onClick={() => setSelectedUuid(null)} style={{ fontSize: 11, color: C.faint, cursor: "pointer", padding: "4px 8px" }}>✕ fermer</span>
               </div>
-
-              {/* Géométrie WKT si présente */}
               {detail.geom && (
                 <div style={{ fontSize: 10, color: C.muted, marginBottom: 12, fontFamily: "monospace", background: C.alt, padding: "6px 10px", borderRadius: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {JSON.stringify(detail.geom).slice(0, 120)}…
                 </div>
               )}
-
-              {/* Propriétés */}
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, marginBottom: 6 }}>
                 Propriétés · {propRows.length}
               </div>
               <DataTable columns={propColumns} rows={propRows} dense emptyMessage="Aucune propriété" />
-
-              {/* Relations */}
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, marginTop: 16, marginBottom: 6 }}>
                 Relations Neo4j · {relRows.length}
               </div>
@@ -220,19 +230,48 @@ export default function TerritoiresPage({
         </div>
       )}
 
-      {/* Légende */}
+      {/* Légende — SPEC §Légende : 3 lignes obligatoires */}
       <div style={{ marginTop: 24, paddingTop: 12, borderTop: `1px solid ${C.blight}`, position: "relative", zIndex: 1 }}>
+        {/* Ligne 1 : Statuts */}
+        <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint }}>Statuts</span>
+          {(() => {
+            const demo = TC.Suisse || C.muted;
+            return (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.text }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 5, border: `2px solid ${demo}`, background: demo }} />
+                  Actif
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.text }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 5, border: `2px solid ${lighten(demo, KIND_LEVEL.draft)}`, background: "transparent" }} />
+                  Brouillon
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.text }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 5, border: `2px dashed ${lighten(demo, KIND_LEVEL.placeholder)}`, background: "transparent" }} />
+                  À nommer
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.text }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 4, border: `2px dashed ${lighten(demo, KIND_LEVEL.cascade)}`, background: "transparent" }} />
+                  À créer
+                </div>
+              </>
+            );
+          })()}
+        </div>
+        {/* Ligne 2 : Types */}
         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint }}>Types</span>
-          {TYPES.map(t => (
+          {territoireSubtypes.map(t => (
             <div key={t} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: C.muted }}>
               <div style={{ width: 6, height: 6, borderRadius: 3, background: TC[t] }} />{t}
             </div>
           ))}
         </div>
       </div>
-      <div style={{ marginTop: 8, fontSize: 10, color: C.faint }}>
-        PostgreSQL : {nodes.length} nœud{nodes.length !== 1 ? "s" : ""} · Sprint 1 — lecture seule
+      {/* Ligne 3 : Compteurs */}
+      <div style={{ marginTop: 12, fontSize: 10, color: C.faint }}>
+        PostgreSQL : {nodes.length} nœud{nodes.length !== 1 ? "s" : ""} · Neo4j : {nodes.filter(n => n.parentId && n.parentId !== 'suisse').length} relation{nodes.filter(n => n.parentId && n.parentId !== 'suisse').length !== 1 ? "s" : ""} Contenu_dans
       </div>
     </div>
   );

@@ -3,18 +3,29 @@ import React from 'react';
 import { C, F, KIND_LEVEL } from '../config/theme.js';
 import { TC } from '../config/palettes.js';
 import { INDENT, CASCADE_OFFSET } from '../config/constants.js';
-import { CANONICAL } from '../helpers/spatial.js';
 import { lighten } from '../helpers/colors.js';
 import Icon from './Icon.jsx';
+import useSchemaStore from '../stores/useSchemaStore.js';
 
-function getChildCascade(type) {
-  const idx = CANONICAL.indexOf(type);
-  if (idx === -1 || idx === CANONICAL.length - 1) return [];
-  return [CANONICAL.slice(idx + 1)];
+// Cascade descendante depuis childrenOf (D13 — hiérarchie spatiale seule).
+// Récursion linéaire : un seul enfant direct par niveau (chaîne spatiale).
+function getChildCascade(type, childrenOf) {
+  const chain = [];
+  let current = type;
+  while (true) {
+    const children = childrenOf[current] || [];
+    if (children.length === 0) break;
+    if (children.length > 1) {
+      console.warn(`[cascade] ${current} a ${children.length} enfants directs — comportement non spécifié`);
+    }
+    chain.push(children[0]);
+    current = children[0];
+  }
+  return chain.length > 0 ? [chain] : [];
 }
 
-// readOnly — Sprint 1 = lecture seule, les mutations sont masquées.
-// Activer en Sprint 2 quand POST/PATCH seront câblés depuis l'UI.
+// readOnly — masque les mutations (crayon, poubelle, cascades "+").
+// Default false depuis Sprint 2 (store Zustand = source de vérité unique).
 export default function TreeNode({
   node, depth, nodes, readOnly = false,
   editingId, editingName, setEditingName,
@@ -22,9 +33,10 @@ export default function TreeNode({
   onEdit, onArchive, onCreateChild,
   onSelect,
 }) {
+  const { territoireChildrenOf } = useSchemaStore();
   const bc = TC[node.type] || C.muted;
   const children = nodes.filter(n => n.parentId === node.id);
-  const cascades = getChildCascade(node.type);
+  const cascades = getChildCascade(node.type, territoireChildrenOf);
 
   return (
     <div style={{ marginLeft: depth > 0 ? INDENT : 0 }}>

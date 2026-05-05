@@ -1,12 +1,13 @@
 import React from 'react';
 import { C, F } from '../config/theme.js';
 import { TC } from '../config/palettes.js';
-import { ROOT } from '../config/constants.js';
+// ROOT retiré — Suisse est un vrai nœud en base (D15)
 import { CATALOG } from '../data/catalog.js';
 import { SPATIAL_OPS, compatibleSpatialOps } from '../data/edge-types.js';
 import { lighten, colorForOntologyPath } from '../helpers/colors.js';
 import { getEffectiveExpectations } from '../helpers/ontology.js';
-import { TYPE_FAMILY, EDGE_TYPES, compatibleEdges, CANONICAL } from '../helpers/spatial.js';
+import { TYPE_FAMILY, compatibleEdges } from '../helpers/spatial.js';
+import useSchemaStore from '../stores/useSchemaStore.js';
 import { isPatternCompleteHelper, firstMissingHintHelper, getStepMissing } from '../helpers/patterns.js';
 import Icon from './Icon.jsx';
 import DataTable from './DataTable.jsx';
@@ -32,6 +33,7 @@ export default function SourceStepper({
   edgeTypes,
   setAddPropModal, setAddPropDraft,
 }) {
+  const { territoireCanonical: CANONICAL } = useSchemaStore();
   if (!sourceStepper || !stepperDraft) return null;
 
   const steps = [
@@ -370,7 +372,7 @@ export default function SourceStepper({
             // La racine Suisse est ajoutée en tête : cocher Suisse = cascade sur tout.
             const targetCanonIdx = CANONICAL.indexOf(stepperDraft.targetType);
             const scopeEligibleNodes = targetCanonIdx > 0
-              ? [ROOT, ...nodes.filter(n => !n.placeholder && CANONICAL.indexOf(n.type) < targetCanonIdx)]
+              ? nodes.filter(n => !n.placeholder && CANONICAL.indexOf(n.type) < targetCanonIdx)
               : [];
 
             // Compte les nœuds cibles dans le périmètre (mock : pour l'instant, on ne peut pas vraiment compter
@@ -1085,7 +1087,7 @@ export default function SourceStepper({
                     {patterns.map((p, idx) => {
                       const complete = isPatternCompleteHelper(p);
                       const otherFam = p.otherNodeType ? TYPE_FAMILY(p.otherNodeType) : "";
-                      const availableEdges = p.otherNodeType ? compatibleEdges(targetFam, otherFam) : [];
+                      const availableEdges = p.otherNodeType ? compatibleEdges(targetFam, otherFam, edgeTypes) : [];
                       const targetTypeColor = TC[stepperDraft.targetType] || C.muted;
                       const otherTypeColor = p.otherNodeType ? (TC[p.otherNodeType] || C.muted) : C.border;
 
@@ -1096,7 +1098,7 @@ export default function SourceStepper({
                       const otherType = p.otherNodeType || "?";
                       const isOutgoing = p.importIsSource;
 
-                      const edgeLabel = EDGE_TYPES.find(e => e.key === p.edgeType)?.label || "";
+                      const edgeLabel = edgeTypes.find(e => e.key === p.edgeType)?.label || "";
                       const modeLabel = p.mode === "linkOrCreateField" ? `créer depuis ${p.propMappings[0]?.sourceField || "champ"}` : "créer en générique";
                       const conf = p.edgeConfidence || defaultConfidence(p.mode);
 

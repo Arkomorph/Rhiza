@@ -9,6 +9,7 @@ import driver from './db/neo4j.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import territoiresRoutes from './routes/territoires.js';
+import schemaRoutes from './routes/schema.js';
 
 const fastify = Fastify({
   logger: {
@@ -30,6 +31,7 @@ await fastify.register(jwtPlugin);
 await fastify.register(healthRoutes);
 await fastify.register(authRoutes, { prefix: '/auth' });
 await fastify.register(territoiresRoutes, { prefix: '/territoires' });
+await fastify.register(schemaRoutes, { prefix: '/schema' });
 
 // Connexions aux bases au démarrage
 try {

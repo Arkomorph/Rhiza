@@ -1,17 +1,16 @@
-import React, { useState, useRef, useLayoutEffect } from "react";
+import React, { useState, useRef, useLayoutEffect, useEffect } from "react";
 
 // ─── Config & données ────────────────────────────────────────────────
 import { C, F, KIND_LEVEL } from './config/theme.js';
 import { TC, AC_PALETTE } from './config/palettes.js';
-import { TYPES, CHILDREN_OF, ROOT, INDENT, CASCADE_OFFSET } from './config/constants.js';
+import { INDENT, CASCADE_OFFSET } from './config/constants.js';
 import { CATALOG } from './data/catalog.js';
-import { INITIAL_EDGE_TYPES } from './data/edge-types.js';
-import { INITIAL_ONTOLOGY_TREE } from './data/ontology.js';
-import { initialDerivedProps } from './data/derived-props.js';
+import useSchemaStore from './stores/useSchemaStore.js';
+import useTerritoiresStore from './stores/useTerritoiresStore.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 import {
-  flattenOntology, findPathForType, getEffectiveProps,
+  findPathForType, getEffectiveProps,
 } from './helpers/ontology.js';
 
 
@@ -40,12 +39,13 @@ import log from './logger.js';
 export default function App() {
   const [page, setPage] = useState("login");
   const [section, setSection] = useState("territoires"); // territoires | donnees
-  const [nodes, setNodes] = useState([]);
+  const territoiresStore = useTerritoiresStore();
+  const nodes = territoiresStore.nodes;
   const [createModal, setCreateModal] = useState(null);   // { mode: 'create'|'edit', tab: 'identite'|'configure', type, parentId, nodeId? }
   const [createName, setCreateName] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
-  const [lines, setLines] = useState([]);
-  const treeRef = useRef(null);
+  // Lignes SVG de l'arbre Territoires : calcul dans TerritoiresPage (useLayoutEffect
+  // synchrone — les pastilles sont dans le DOM avant la mesure, cf. dette n°15).
   const [archiveModal, setArchiveModal] = useState(null); // { nodeId }
   const [archiveLines, setArchiveLines] = useState([]);
   const archiveTreeRef = useRef(null);
@@ -56,41 +56,28 @@ export default function App() {
   const [expandedHistory, setExpandedHistory] = useState({}); // { [sourceId]: true } — lignes catalogue dépliées
   const [schemaSelection, setSchemaSelection] = useState({ kind: "node", path: ["Territoire"] }); // { kind: "node"|"edge", path: [...] }
 
-  const [derivedProps, setDerivedProps] = useState(initialDerivedProps);
+  // ─── Schéma depuis le store Zustand (Jalon 6) ──────────────────────
+  // Source de vérité : Postgres via GET /schema. Plus de constantes JS.
+  const schemaStore = useSchemaStore();
+  const { ontologyTree, ontologyFlat, ontologyTypesGrouped, edgeTypesFormatted: edgeTypes } = schemaStore;
+  const { loading: schemaLoading } = schemaStore;
 
-  // Arbre ontologique — state mutable pour permettre l'édition des propriétés intrinsèques (parcours 5 §I6)
-  const [ontologyTree, setOntologyTree] = useState(INITIAL_ONTOLOGY_TREE);
-  // Vue à plat de l'arbre — recalculée à chaque mutation
-  const ontologyFlat = flattenOntology(ontologyTree);
+  // Setters : les mutations passent par le store (API + refetch)
+  const setOntologyTree = () => { /* noop — mutations via store.addProperty/updateProperty/etc */ };
+  const setEdgeTypes = () => { /* noop — mutations via store.addEdgeProperty/etc */ };
 
-  // Types/sous-types groupés par famille, avec profondeur pour indentation dans les <select>.
-  const ontologyTypesGrouped = (() => {
-    const groups = [];
-    for (const [rootKey, rootNode] of Object.entries(ontologyTree)) {
-      const types = [];
-      const walk = (node, depth) => {
-        types.push({ key: node.key, label: node.label, depth });
-        if (node.children) {
-          for (const child of Object.values(node.children)) walk(child, depth + 1);
-        }
-      };
-      walk(rootNode, 0);
-      groups.push({ label: rootKey, types });
-    }
-    return groups;
-  })();
+  // Dérivées — restent en local pour Sprint 2 (dette #14 : pas persistées)
+  const [derivedProps, setDerivedProps] = useState([]);
 
-  // Propriétés effectives (avec héritage) d'un type donné depuis l'arbre ontologique mutable.
-  const getSchemaPropsForType = (type) => {
-    if (!type) return [];
-    const path = findPathForType(ontologyTree, type);
-    return path ? getEffectiveProps(ontologyTree, path) : [];
-  };
+  const getSchemaPropsForType = schemaStore.getSchemaPropsForType;
 
-  const [hoveredTreePath, setHoveredTreePath] = useState(null); // pathKey du nœud survolé dans la sidebar
+  const [hoveredTreePath, setHoveredTreePath] = useState(null);
 
-  // Liste mutable des types d'arêtes (parcours 5 §I6 étape 5)
-  const [edgeTypes, setEdgeTypes] = useState(INITIAL_EDGE_TYPES);
+  // Fetch initial au montage — schéma + territoires en parallèle
+  useEffect(() => {
+    schemaStore.fetchAll();
+    territoiresStore.fetchAll();
+  }, []);
 
   const [sourceConfig, setSourceConfig] = useState({}); // { [sourceId]: { sourceOk, mappingOk, patternsOk, imported, hasError } }
   const [sourceStepper, setSourceStepper] = useState(null); // { sourceId, step, mode: 'create'|'edit' }
@@ -98,12 +85,9 @@ export default function App() {
   const [addPropModal, setAddPropModal] = useState(null); // { forSourceField } — modale d'ajout ad hoc (mock parcours 5)
   const [addPropDraft, setAddPropDraft] = useState({ key: "", label: "", type: "string" });
 
-  // ─── Renommage d'un nœud (callback de TerritoiresPage) ──────────────
+  // ─── Renommage d'un nœud — stub Sprint 2 (PATCH /territoires non câblé) ──
   const handleNodeRenamed = (nodeId, newName, wasPlaceholder) => {
-    setNodes(nodes.map(n => n.id === nodeId
-      ? { ...n, nom: newName, placeholder: false, status: wasPlaceholder ? "draft" : n.status }
-      : n
-    ));
+    console.warn('[territoires] renommage local — PATCH non câblé Sprint 2');
   };
 
   // ─── Archivage : collecte des descendants récursivement ───────────
@@ -129,7 +113,7 @@ export default function App() {
     //   PostgreSQL : UPDATE territoires SET archived_at = NOW() WHERE id IN (...)
     //   Neo4j : MATCH (n:Territoire) WHERE n.uuid IN [...] SET n:Archived
     //   Les propriétés versionnées et les arêtes restent intactes — on archive la tête.
-    setNodes(nodes.filter(n => !toRemove.has(n.id)));
+    console.warn('[territoires] archivage local — DELETE non câblé Sprint 2');
     setArchiveModal(null);
   };
 
@@ -137,12 +121,7 @@ export default function App() {
   // Le status "active" est dérivé : un nœud avec au moins 1 source liée est actif.
   // Un nœud sans source est brouillon. Le placeholder reste placeholder jusqu'au nommage.
   const toggleSource = (nodeId, sourceId) => {
-    setNodes(nodes.map(n => {
-      if (n.id !== nodeId) return n;
-      const sources = n.sources || [];
-      const next = sources.includes(sourceId) ? sources.filter(s => s !== sourceId) : [...sources, sourceId];
-      return { ...n, sources: next, status: next.length > 0 ? "active" : "draft" };
-    }));
+    console.warn('[territoires] toggleSource local — non câblé Sprint 2');
   };
 
   // ─── Ajout d'une source custom : ajoutée au catalogue + liée au nœud ─
@@ -404,61 +383,8 @@ export default function App() {
         executions: [...execs, newExec],
       }
     }));
-    if (newNodes.length > 0) setNodes(prev => [...prev, ...newNodes]);
+    if (newNodes.length > 0) territoiresStore.fetchAll(); // refetch après import
   };
-
-  // ─── Arbre de lignes : mesure les pastilles et construit les paths ───
-  useLayoutEffect(() => {
-    const container = treeRef.current;
-    if (!container) return;
-
-    const measure = () => {
-      const cRect = container.getBoundingClientRect();
-      const els = container.querySelectorAll("[data-pastille]");
-      const pos = {};
-      els.forEach(el => {
-        const rect = el.getBoundingClientRect();
-        pos[el.dataset.pastille] = {
-          x: rect.left - cRect.left + rect.width / 2,
-          y: rect.top - cRect.top + rect.height / 2,
-          r: rect.width / 2,
-          parentKey: el.dataset.parent,
-          color: el.dataset.color,
-          dashed: el.hasAttribute("data-dashed"),
-          status: el.dataset.status,
-          placeholder: el.hasAttribute("data-placeholder"),
-        };
-      });
-
-      const ls = [];
-      Object.values(pos).forEach(p => {
-        if (p.parentKey && pos[p.parentKey]) {
-          const parent = pos[p.parentKey];
-          // Kind de la ligne selon le statut de l'enfant
-          let kind;
-          if (p.dashed) kind = "cascade";
-          else if (p.placeholder) kind = "placeholder";
-          else if (p.status === "active") kind = "active";
-          else kind = "draft";
-          ls.push({
-            fx: parent.x, fy: parent.y, fr: parent.r,
-            tx: p.x, ty: p.y, tr: p.r,
-            color: p.color,
-            kind,
-          });
-        }
-      });
-      // Ordre de rendu : cascade (fond) → placeholder → draft → active (dessus)
-      const order = { cascade: 0, placeholder: 1, draft: 2, active: 3 };
-      ls.sort((a, b) => order[a.kind] - order[b.kind]);
-      setLines(ls);
-    };
-
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(container);
-    return () => ro.disconnect();
-  }, [nodes, section]);
 
   // ─── Arbre de lignes SVG pour la modale d'archivage ────────────────
   useLayoutEffect(() => {
@@ -549,7 +475,6 @@ export default function App() {
       {/* N1 — Territoires */}
       {section === "territoires" && (
         <TerritoiresPage
-          treeRef={treeRef} lines={lines} nodes={nodes}
           onNodeRenamed={handleNodeRenamed}
           onEdit={(node) => { setCreateModal({ mode: "edit", tab: "identite", type: node.type, parentId: node.parentId, nodeId: node.id }); setCreateName(node.placeholder ? "" : node.nom); }}
           onArchive={(nodeId) => setArchiveModal({ nodeId })}
@@ -586,7 +511,7 @@ export default function App() {
         <CreateNodeModal
           createModal={createModal} setCreateModal={setCreateModal}
           createName={createName} setCreateName={setCreateName}
-          nodes={nodes} setNodes={setNodes}
+          nodes={nodes} setNodes={() => console.warn('[territoires] setNodes stub — via store')}
           sourceFilter={sourceFilter} setSourceFilter={setSourceFilter}
           customSources={customSources}
           onToggleSource={toggleSource} onOpenAddSource={setAddSourceModal}
