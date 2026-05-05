@@ -1,7 +1,7 @@
 // ─── Section Données — catalogue des sources (J8a) ───────────────────
 // Layout 2 colonnes : arbre latéral type/sous-type (filtre) + DataTable.
 // Données depuis useSourcesStore (Zustand). Plus de CATALOG hardcodé.
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { C, F } from '../config/theme.js';
 import { TC } from '../config/palettes.js';
 import DataTable from '../components/DataTable.jsx';
@@ -28,7 +28,20 @@ export default function DonneesPage({
   const [dataFilter, setDataFilter] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [archivedSources, setArchivedSources] = useState([]);
+  const [archivedCount, setArchivedCount] = useState(0);
   const [deleteModal, setDeleteModal] = useState(null); // { id, nom } ou null
+
+  // Compteur d'archivées au montage et après chaque mutation
+  useEffect(() => {
+    fetch(`${API_BASE}/sources?include_archived=true`)
+      .then(r => r.ok ? r.json() : { sources: [] })
+      .then(d => {
+        const archived = (d.sources || []).filter(s => s.archived_at);
+        setArchivedCount(archived.length);
+        if (showArchived) setArchivedSources(archived);
+      })
+      .catch(() => {});
+  }, [sources.length]); // refetch quand le nombre de sources actives change
 
   const confirmDelete = async () => {
     if (!deleteModal) return;
@@ -61,16 +74,20 @@ export default function DonneesPage({
         const d = await r.json();
         setArchivedSources((d.sources || []).filter(s => s.archived_at));
       }
+      setShowArchived(true);
+    } else {
+      setShowArchived(false);
     }
-    setShowArchived(!showArchived);
   };
 
-  // Sources à afficher : actives + archivées si toggle
-  const displaySources = showArchived ? [...sources, ...archivedSources] : sources;
+  // Quand on active le filtre archivées, on montre UNIQUEMENT les archivées
+  // (pas un mélange actives + archivées qui noierait les archivées)
+  const displaySources = showArchived ? archivedSources : sources;
 
   // Sources filtrées par type sélectionné + recherche texte
-  const typeFiltered = selectedType
-    ? displaySources.filter(s => s.target_type === selectedType)
+  // Quand on filtre les archivées, on ignore le filtre par type (les archivées n'ont souvent pas de target_type)
+  const typeFiltered = (selectedType && !showArchived)
+    ? displaySources.filter(s => selectedType === '__none__' ? !s.target_type : s.target_type === selectedType)
     : displaySources;
 
   const filtered = typeFiltered.filter(s => {
@@ -204,7 +221,7 @@ export default function DonneesPage({
             color: showArchived ? C.error : C.faint, fontStyle: "italic",
           }}
         >
-          {showArchived ? `✕ Masquer archivées (${archivedSources.length})` : `Voir archivées`}
+          {showArchived ? `✕ Masquer archivées (${archivedCount})` : `Voir archivées (${archivedCount})`}
         </div>
 
         {/* Filtre Synchronisables — Sprint 2: toujours 0 (patterns = J7) */}

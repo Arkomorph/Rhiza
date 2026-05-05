@@ -160,17 +160,8 @@ export default function SourceStepper({
                       />
                     </div>
                   </div>
-                  <div style={{ marginBottom: 10, display: "flex", gap: 10 }}>
-                    <div style={{ flex: 0.5 }}>
-                      <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>ID</div>
-                      <input
-                        value={stepperDraft.id || ''}
-                        onChange={e => setStepperDraft({ ...stepperDraft, id: e.target.value })}
-                        placeholder={nextId}
-                        style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, outline: "none", boxSizing: "border-box", fontFamily: "monospace" }}
-                      />
-                    </div>
-                    <div style={{ flex: 1 }}>
+                  <div style={{ marginBottom: 10 }}>
+                    <div>
                       <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>Type cible</div>
                       <select
                         value={stepperDraft.targetType || ''}
