@@ -44,8 +44,8 @@ export default function App() {
   const [createModal, setCreateModal] = useState(null);   // { mode: 'create'|'edit', tab: 'identite'|'configure', type, parentId, nodeId? }
   const [createName, setCreateName] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
-  const [lines, setLines] = useState([]);
-  const treeRef = useRef(null);
+  // Lignes SVG de l'arbre Territoires : calcul dans TerritoiresPage (useLayoutEffect
+  // synchrone — les pastilles sont dans le DOM avant la mesure, cf. dette n°15).
   const [archiveModal, setArchiveModal] = useState(null); // { nodeId }
   const [archiveLines, setArchiveLines] = useState([]);
   const archiveTreeRef = useRef(null);
@@ -386,11 +386,6 @@ export default function App() {
     if (newNodes.length > 0) territoiresStore.fetchAll(); // refetch après import
   };
 
-  // ─── Lignes SVG déplacées dans TerritoiresPage (même composant que les pastilles) ───
-  // L'ancien mécanisme cross-composant via treeRef causait des bugs de timing
-  // récurrents — le useEffect de App.jsx ne pouvait pas savoir quand les pastilles
-  // étaient réellement dans le DOM après le loading gate de TerritoiresPage.
-
   // ─── Arbre de lignes SVG pour la modale d'archivage ────────────────
   useLayoutEffect(() => {
     const container = archiveTreeRef.current;
@@ -480,7 +475,6 @@ export default function App() {
       {/* N1 — Territoires */}
       {section === "territoires" && (
         <TerritoiresPage
-          nodes={nodes}
           onNodeRenamed={handleNodeRenamed}
           onEdit={(node) => { setCreateModal({ mode: "edit", tab: "identite", type: node.type, parentId: node.parentId, nodeId: node.id }); setCreateName(node.placeholder ? "" : node.nom); }}
           onArchive={(nodeId) => setArchiveModal({ nodeId })}
