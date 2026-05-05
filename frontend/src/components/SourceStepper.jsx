@@ -160,6 +160,34 @@ export default function SourceStepper({
                       />
                     </div>
                   </div>
+                  <div style={{ marginBottom: 10, display: "flex", gap: 10 }}>
+                    <div style={{ flex: 0.5 }}>
+                      <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>ID</div>
+                      <input
+                        value={stepperDraft.id || ''}
+                        onChange={e => setStepperDraft({ ...stepperDraft, id: e.target.value })}
+                        placeholder={nextId}
+                        style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, outline: "none", boxSizing: "border-box", fontFamily: "monospace" }}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>Type cible</div>
+                      <select
+                        value={stepperDraft.targetType || ''}
+                        onChange={e => setStepperDraft({ ...stepperDraft, targetType: e.target.value || '' })}
+                        style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, outline: "none", boxSizing: "border-box", fontFamily: F.body, background: C.surface }}
+                      >
+                        <option value="">— Aucun —</option>
+                        {(ontologyTypesGrouped || []).map(group => (
+                          <optgroup key={group.label} label={group.label}>
+                            {group.types.map(t => (
+                              <option key={t.key} value={t.key}>{'\u00A0'.repeat(t.depth * 2)}{t.label}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                   <div style={{ marginBottom: 10 }}>
                     <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>{servicePromptLabel}</div>
                     <div style={{ display: "flex", gap: 6 }}>

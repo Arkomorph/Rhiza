@@ -1,7 +1,7 @@
 // ─── Section Données — catalogue des sources (J8a) ───────────────────
 // Layout 2 colonnes : arbre latéral type/sous-type (filtre) + DataTable.
 // Données depuis useSourcesStore (Zustand). Plus de CATALOG hardcodé.
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { C, F } from '../config/theme.js';
 import { TC } from '../config/palettes.js';
 import DataTable from '../components/DataTable.jsx';
@@ -21,21 +21,24 @@ const STATUT_STYLE = {
 export default function DonneesPage({
   openSourceStepperCreate, openSourceStepperEdit,
 }) {
-  const { sources, loading, error, sourcesByTargetType, sourcesUncategorized, fetchAll: refetchSources } = useSourcesStore();
+  const sourcesStore = useSourcesStore();
+  const { sources, loading, error, sourcesByTargetType, sourcesUncategorized } = sourcesStore;
   const { territoireCanonical, ontologyTypesGrouped } = useSchemaStore();
-  const { deleteSource } = useSourcesStore();
   const [selectedType, setSelectedType] = useState(null);
   const [dataFilter, setDataFilter] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [archivedSources, setArchivedSources] = useState([]);
   const [deleteModal, setDeleteModal] = useState(null); // { id, nom } ou null
 
-  const confirmDelete = useCallback(async () => {
+  const confirmDelete = async () => {
     if (!deleteModal) return;
     const deletedId = deleteModal.id;
+    const deletedNom = deleteModal.nom;
     setDeleteModal(null);
     try {
-      await deleteSource(deletedId);
+      console.log(`[DonneesPage] archiving ${deletedId}...`);
+      await sourcesStore.deleteSource(deletedId);
+      console.log(`[DonneesPage] archived ${deletedId}, sources count: ${sourcesStore.sources.length}`);
       // Refetch les archivées si le toggle est actif
       if (showArchived) {
         const r = await fetch(`${API_BASE}/sources?include_archived=true`);
@@ -45,12 +48,13 @@ export default function DonneesPage({
         }
       }
     } catch (err) {
-      console.error('[sources] delete failed', err);
+      console.error('[DonneesPage] delete failed', err);
+      alert(`Erreur lors de l'archivage de ${deletedNom} : ${err.message}`);
     }
-  }, [deleteModal, deleteSource, showArchived]);
+  };
 
   // Fetch archivées quand toggle activé
-  const toggleArchived = useCallback(async () => {
+  const toggleArchived = async () => {
     if (!showArchived) {
       const r = await fetch(`${API_BASE}/sources?include_archived=true`);
       if (r.ok) {
@@ -59,7 +63,7 @@ export default function DonneesPage({
       }
     }
     setShowArchived(!showArchived);
-  }, [showArchived]);
+  };
 
   // Sources à afficher : actives + archivées si toggle
   const displaySources = showArchived ? [...sources, ...archivedSources] : sources;
