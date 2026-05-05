@@ -146,9 +146,9 @@ export default function App() {
   // ─── Stepper source : ouverture en création ou édition ─────────────
 
   const openSourceStepperCreate = () => {
-    const tempId = `S-draft-${Date.now()}`;
+    const sourceNextId = sourcesStore.nextId || `S${String(Date.now()).slice(-3)}`;
     setStepperDraft({
-      id: tempId,
+      id: sourceNextId,
       nom: "",
       format: "WFS",
       portail: "",
@@ -179,7 +179,7 @@ export default function App() {
       noPatterns: false,                 // "Aucun pattern — source autoportante" coché
       patternsOk: false,
     });
-    setSourceStepper({ sourceId: tempId, step: "source", mode: "create" });
+    setSourceStepper({ sourceId: sourceNextId, step: "source", mode: "create" });
   };
 
   const openSourceStepperEdit = (sourceId) => {
