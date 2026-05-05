@@ -436,7 +436,11 @@ export default function App() {
       setLines(ls);
     };
 
-    const raf = requestAnimationFrame(measure);
+    // Double-RAF : le premier attend le commit React, le second attend le paint.
+    // Garantit que les pastilles sont dans le DOM et peintes avant la mesure.
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(measure);
+    });
     const ro = new ResizeObserver(measure);
     ro.observe(container);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); };
