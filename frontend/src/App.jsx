@@ -386,66 +386,10 @@ export default function App() {
     if (newNodes.length > 0) territoiresStore.fetchAll(); // refetch après import
   };
 
-  // ─── Arbre de lignes : mesure les pastilles et construit les paths ───
-  // useEffect + requestAnimationFrame pour mesurer après le paint.
-  // Le fetch async des nœuds provoque un premier render vide — le RAF
-  // garantit que les pastilles sont dans le DOM avant la mesure.
-  useEffect(() => {
-    const container = treeRef.current;
-    if (!container) return;
-
-    const measure = () => {
-      const cRect = container.getBoundingClientRect();
-      const els = container.querySelectorAll("[data-pastille]");
-      const pos = {};
-      els.forEach(el => {
-        const rect = el.getBoundingClientRect();
-        pos[el.dataset.pastille] = {
-          x: rect.left - cRect.left + rect.width / 2,
-          y: rect.top - cRect.top + rect.height / 2,
-          r: rect.width / 2,
-          parentKey: el.dataset.parent,
-          color: el.dataset.color,
-          dashed: el.hasAttribute("data-dashed"),
-          status: el.dataset.status,
-          placeholder: el.hasAttribute("data-placeholder"),
-        };
-      });
-
-      const ls = [];
-      Object.values(pos).forEach(p => {
-        if (p.parentKey && pos[p.parentKey]) {
-          const parent = pos[p.parentKey];
-          // Kind de la ligne selon le statut de l'enfant
-          let kind;
-          if (p.dashed) kind = "cascade";
-          else if (p.placeholder) kind = "placeholder";
-          else if (p.status === "active") kind = "active";
-          else kind = "draft";
-          ls.push({
-            fx: parent.x, fy: parent.y, fr: parent.r,
-            tx: p.x, ty: p.y, tr: p.r,
-            color: p.color,
-            kind,
-          });
-        }
-      });
-      // Ordre de rendu : cascade (fond) → placeholder → draft → active (dessus)
-      const order = { cascade: 0, placeholder: 1, draft: 2, active: 3 };
-      ls.sort((a, b) => order[a.kind] - order[b.kind]);
-      setLines(ls);
-    };
-
-    // setTimeout 0 laisse le navigateur peindre les pastilles avant de mesurer.
-    // Dépendances : nodes ET schemaLoading — le loading gate dans TerritoiresPage
-    // empêche le rendu des pastilles tant que le schéma n'est pas chargé.
-    // Sans schemaLoading dans les deps, le useEffect ne se re-déclenche pas
-    // quand le schéma arrive et les pastilles apparaissent.
-    const timer = setTimeout(measure, 0);
-    const ro = new ResizeObserver(measure);
-    ro.observe(container);
-    return () => { clearTimeout(timer); ro.disconnect(); };
-  }, [nodes, section, schemaLoading]);
+  // ─── Lignes SVG déplacées dans TerritoiresPage (même composant que les pastilles) ───
+  // L'ancien mécanisme cross-composant via treeRef causait des bugs de timing
+  // récurrents — le useEffect de App.jsx ne pouvait pas savoir quand les pastilles
+  // étaient réellement dans le DOM après le loading gate de TerritoiresPage.
 
   // ─── Arbre de lignes SVG pour la modale d'archivage ────────────────
   useLayoutEffect(() => {
@@ -536,7 +480,7 @@ export default function App() {
       {/* N1 — Territoires */}
       {section === "territoires" && (
         <TerritoiresPage
-          treeRef={treeRef} lines={lines} nodes={nodes}
+          nodes={nodes}
           onNodeRenamed={handleNodeRenamed}
           onEdit={(node) => { setCreateModal({ mode: "edit", tab: "identite", type: node.type, parentId: node.parentId, nodeId: node.id }); setCreateName(node.placeholder ? "" : node.nom); }}
           onArchive={(nodeId) => setArchiveModal({ nodeId })}

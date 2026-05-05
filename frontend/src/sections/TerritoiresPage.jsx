@@ -1,7 +1,7 @@
 // ─── Section Territoires — arbre hiérarchique + détail API ───────────
 // Données depuis useTerritoiresStore (Zustand).
 // Clic sur un nœud → fetch détail (propriétés + relations).
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { C, F, KIND_LEVEL } from '../config/theme.js';
 import { TC } from '../config/palettes.js';
 import useSchemaStore from '../stores/useSchemaStore.js';
@@ -13,13 +13,13 @@ import useTerritoiresStore from '../stores/useTerritoiresStore.js';
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.rhiza.ch';
 
 export default function TerritoiresPage({
-  treeRef, lines,
   onNodeRenamed, onEdit, onArchive, onCreateChild,
 }) {
   const { nodes, loading, error } = useTerritoiresStore();
   const { territoireSubtypes, loading: schemaLoading } = useSchemaStore();
-  // Racine = nœud sans parentId (Suisse, un vrai Territoire en base depuis D15)
   const rootNode = nodes.find(n => n.parentId === null);
+  const treeRef = useRef(null);
+  const [lines, setLines] = useState([]);
   const [selectedUuid, setSelectedUuid] = useState(null);
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -57,6 +57,59 @@ export default function TerritoiresPage({
     setEditingName("");
   };
   const cancelEdit = () => { setEditingId(null); setEditingName(""); };
+
+  // ─── Lignes SVG — mesure des pastilles après rendu ─────────────────
+  // useLayoutEffect dans le même composant que TreeNode : les pastilles
+  // sont garanties d'être dans le DOM au moment de la mesure.
+  useLayoutEffect(() => {
+    const container = treeRef.current;
+    if (!container || loading || schemaLoading || !rootNode) { setLines([]); return; }
+
+    const measure = () => {
+      const cRect = container.getBoundingClientRect();
+      const els = container.querySelectorAll("[data-pastille]");
+      const pos = {};
+      els.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        pos[el.dataset.pastille] = {
+          x: rect.left - cRect.left + rect.width / 2,
+          y: rect.top - cRect.top + rect.height / 2,
+          r: rect.width / 2,
+          parentKey: el.dataset.parent,
+          color: el.dataset.color,
+          dashed: el.hasAttribute("data-dashed"),
+          status: el.dataset.status,
+          placeholder: el.hasAttribute("data-placeholder"),
+        };
+      });
+
+      const ls = [];
+      Object.values(pos).forEach(p => {
+        if (p.parentKey && pos[p.parentKey]) {
+          const parent = pos[p.parentKey];
+          let kind;
+          if (p.dashed) kind = "cascade";
+          else if (p.placeholder) kind = "placeholder";
+          else if (p.status === "active") kind = "active";
+          else kind = "draft";
+          ls.push({
+            fx: parent.x, fy: parent.y, fr: parent.r,
+            tx: p.x, ty: p.y, tr: p.r,
+            color: p.color,
+            kind,
+          });
+        }
+      });
+      const order = { cascade: 0, placeholder: 1, draft: 2, active: 3 };
+      ls.sort((a, b) => order[a.kind] - order[b.kind]);
+      setLines(ls);
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [nodes, loading, schemaLoading, rootNode]);
 
   // Colonnes du DataTable pour les propriétés
   const propColumns = [
