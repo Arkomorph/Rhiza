@@ -10,6 +10,7 @@ import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import territoiresRoutes from './routes/territoires.js';
 import schemaRoutes from './routes/schema.js';
+import sourcesRoutes from './routes/sources.js';
 
 const fastify = Fastify({
   logger: {
@@ -23,7 +24,10 @@ const fastify = Fastify({
 });
 
 // Plugins
-await fastify.register(cors, { origin: config.FRONTEND_ORIGIN });
+await fastify.register(cors, {
+  origin: config.FRONTEND_ORIGIN,
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+});
 await fastify.register(requestLogger);
 await fastify.register(jwtPlugin);
 
@@ -32,6 +36,7 @@ await fastify.register(healthRoutes);
 await fastify.register(authRoutes, { prefix: '/auth' });
 await fastify.register(territoiresRoutes, { prefix: '/territoires' });
 await fastify.register(schemaRoutes, { prefix: '/schema' });
+await fastify.register(sourcesRoutes, { prefix: '/sources' });
 
 // Connexions aux bases au démarrage
 try {

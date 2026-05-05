@@ -8,6 +8,7 @@ import { lighten, colorForOntologyPath } from '../helpers/colors.js';
 import { getEffectiveExpectations } from '../helpers/ontology.js';
 import { TYPE_FAMILY, compatibleEdges } from '../helpers/spatial.js';
 import useSchemaStore from '../stores/useSchemaStore.js';
+import useSourcesStore from '../stores/useSourcesStore.js';
 import { isPatternCompleteHelper, firstMissingHintHelper, getStepMissing } from '../helpers/patterns.js';
 import Icon from './Icon.jsx';
 import DataTable from './DataTable.jsx';
@@ -34,6 +35,7 @@ export default function SourceStepper({
   setAddPropModal, setAddPropDraft,
 }) {
   const { territoireCanonical: CANONICAL } = useSchemaStore();
+  const { addSource, nextId } = useSourcesStore();
   if (!sourceStepper || !stepperDraft) return null;
 
   const steps = [
@@ -156,6 +158,25 @@ export default function SourceStepper({
                         placeholder="ex : geo.fr.ch"
                         style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, outline: "none", boxSizing: "border-box", fontFamily: F.body }}
                       />
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>Type cible</div>
+                      <select
+                        value={stepperDraft.targetType || ''}
+                        onChange={e => setStepperDraft({ ...stepperDraft, targetType: e.target.value || '' })}
+                        style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, outline: "none", boxSizing: "border-box", fontFamily: F.body, background: C.surface }}
+                      >
+                        <option value="">— Aucun —</option>
+                        {(ontologyTypesGrouped || []).map(group => (
+                          <optgroup key={group.label} label={group.label}>
+                            {group.types.map(t => (
+                              <option key={t.key} value={t.key}>{'\u00A0'.repeat(t.depth * 2)}{t.label}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
                     </div>
                   </div>
                   <div style={{ marginBottom: 10 }}>
@@ -1612,13 +1633,30 @@ export default function SourceStepper({
             setStepperDraft(next);
             setSourceStepper({ ...sourceStepper, step: steps[currentIdx + 1].key });
           };
-          // Sauvegarder : valide si possible (sur le dernier step) puis ferme.
-          const saveAndClose = () => {
+          // Sauvegarder : persiste via POST /sources si création, sinon sauvegarde locale.
+          const saveAndClose = async () => {
             const draftToSave = { ...stepperDraft };
             if (canValidateNow) {
               if (currentStepKey === "mapping") draftToSave.mappingOk = true;
               if (currentStepKey === "patterns") draftToSave.patternsOk = true;
             }
+            // Persistance en base si création (J8a Step 1)
+            if (sourceStepper.mode === 'create' && draftToSave.nom?.trim()) {
+              try {
+                await addSource({
+                  id: draftToSave.id || nextId,
+                  nom: draftToSave.nom.trim(),
+                  format: draftToSave.format || 'GeoJSON',
+                  portail: draftToSave.portail || null,
+                  target_type: draftToSave.targetType || null,
+                });
+              } catch (err) {
+                console.error('[stepper] POST /sources failed', err);
+                alert(`Erreur : ${err.message}`);
+                return; // Ne pas fermer si erreur
+              }
+            }
+            // Config locale (Steps 2-3 restent en draft)
             setSourceConfig(prev => ({ ...prev, [draftToSave.id]: draftToSave }));
             setSourceStepper(null);
             setStepperDraft(null);
