@@ -139,14 +139,23 @@ const sourcesRoutes: FastifyPluginAsync = async (fastify) => {
       if (!typeExists) { reply.code(400); return { error: `Type cible "${data.target_type}" n'existe pas dans le schéma` }; }
     }
 
-    await sql`
-      INSERT INTO config.sources (id, nom, format, portail, theme, indicators, producer, year, grain, extent, url, access, status, endpoint_url, endpoint_protocol, complet, target_type)
-      VALUES (${data.id}, ${data.nom}, ${data.format}, ${data.portail ?? null}, ${data.theme ?? null},
-              ${data.indicators ?? null}, ${data.producer ?? null}, ${data.year ?? null},
-              ${data.grain ?? null}, ${data.extent ?? null}, ${data.url ?? null}, ${data.access ?? null},
-              ${data.status}, ${data.endpoint_url ?? null}, ${data.endpoint_protocol ?? null},
-              ${data.complet}, ${data.target_type ?? null})
-    `;
+    try {
+      await sql`
+        INSERT INTO config.sources (id, nom, format, portail, theme, indicators, producer, year, grain, extent, url, access, status, endpoint_url, endpoint_protocol, complet, target_type)
+        VALUES (${data.id}, ${data.nom}, ${data.format}, ${data.portail ?? null}, ${data.theme ?? null},
+                ${data.indicators ?? null}, ${data.producer ?? null}, ${data.year ?? null},
+                ${data.grain ?? null}, ${data.extent ?? null}, ${data.url ?? null}, ${data.access ?? null},
+                ${data.status}, ${data.endpoint_url ?? null}, ${data.endpoint_protocol ?? null},
+                ${data.complet}, ${data.target_type ?? null})
+      `;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('duplicate key') || msg.includes('23505')) {
+        reply.code(409);
+        return { error: `Source ${data.id} existe déjà` };
+      }
+      throw err;
+    }
 
     await audit('INSERT', data.id, null, data);
     fastify.log.info({ module: 'sources', action: 'INSERT', resource_id: data.id, duration_ms: Date.now() - start }, 'source created');
