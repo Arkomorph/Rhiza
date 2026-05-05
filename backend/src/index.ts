@@ -24,7 +24,10 @@ const fastify = Fastify({
 });
 
 // Plugins
-await fastify.register(cors, { origin: config.FRONTEND_ORIGIN });
+await fastify.register(cors, {
+  origin: config.FRONTEND_ORIGIN,
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+});
 await fastify.register(requestLogger);
 await fastify.register(jwtPlugin);
 
