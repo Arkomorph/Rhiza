@@ -436,14 +436,15 @@ export default function App() {
       setLines(ls);
     };
 
-    // Double-RAF : le premier attend le commit React, le second attend le paint.
-    // Garantit que les pastilles sont dans le DOM et peintes avant la mesure.
-    const raf = requestAnimationFrame(() => {
-      requestAnimationFrame(measure);
-    });
+    // MutationObserver : re-mesure quand des pastilles apparaissent/disparaissent
+    // dans le DOM (fetch async → render → pastilles insérées après le mount).
+    // ResizeObserver seul ne détecte que les changements de taille du container.
+    const mo = new MutationObserver(() => requestAnimationFrame(measure));
+    mo.observe(container, { childList: true, subtree: true });
     const ro = new ResizeObserver(measure);
     ro.observe(container);
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+    requestAnimationFrame(measure);
+    return () => { mo.disconnect(); ro.disconnect(); };
   }, [nodes, section]);
 
   // ─── Arbre de lignes SVG pour la modale d'archivage ────────────────
