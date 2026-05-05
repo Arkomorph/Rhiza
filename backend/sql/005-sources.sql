@@ -28,6 +28,10 @@ CREATE TABLE IF NOT EXISTS config.sources (
   archived_at       TIMESTAMPTZ
 );
 
+-- Colonnes ajoutées au J8a (la table peut exister depuis Sprint 0 sans ces colonnes)
+ALTER TABLE config.sources ADD COLUMN IF NOT EXISTS target_type TEXT REFERENCES config.schema_types(key);
+ALTER TABLE config.sources ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+
 CREATE INDEX IF NOT EXISTS idx_sources_format ON config.sources(format);
 CREATE INDEX IF NOT EXISTS idx_sources_portail ON config.sources(portail);
 CREATE INDEX IF NOT EXISTS idx_sources_status ON config.sources(status);
