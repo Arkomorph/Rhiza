@@ -387,7 +387,10 @@ export default function App() {
   };
 
   // ─── Arbre de lignes : mesure les pastilles et construit les paths ───
-  useLayoutEffect(() => {
+  // useEffect + requestAnimationFrame pour mesurer après le paint.
+  // Le fetch async des nœuds provoque un premier render vide — le RAF
+  // garantit que les pastilles sont dans le DOM avant la mesure.
+  useEffect(() => {
     const container = treeRef.current;
     if (!container) return;
 
@@ -433,10 +436,10 @@ export default function App() {
       setLines(ls);
     };
 
-    measure();
+    const raf = requestAnimationFrame(measure);
     const ro = new ResizeObserver(measure);
     ro.observe(container);
-    return () => ro.disconnect();
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
   }, [nodes, section]);
 
   // ─── Arbre de lignes SVG pour la modale d'archivage ────────────────
