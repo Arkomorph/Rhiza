@@ -3,7 +3,7 @@ import React, { useState, useRef, useLayoutEffect, useEffect } from "react";
 // ─── Config & données ────────────────────────────────────────────────
 import { C, F, KIND_LEVEL } from './config/theme.js';
 import { TC, AC_PALETTE } from './config/palettes.js';
-import { ROOT, INDENT, CASCADE_OFFSET } from './config/constants.js';
+import { INDENT, CASCADE_OFFSET } from './config/constants.js';
 import { CATALOG } from './data/catalog.js';
 import useSchemaStore from './stores/useSchemaStore.js';
 import useTerritoiresStore from './stores/useTerritoiresStore.js';

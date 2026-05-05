@@ -5,7 +5,6 @@
 import { create } from 'zustand';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.rhiza.ch';
-const ROOT_ID = 'suisse';
 
 const useTerritoiresStore = create((set, get) => ({
   // Raw API data
@@ -34,19 +33,19 @@ const useTerritoiresStore = create((set, get) => ({
       // nature_history "Territoire:Quartier:" → "Quartier"
       const nodes = list.map(t => {
         const parts = (t.nature_history || '').split(':').filter(Boolean);
-        const type = parts[1] || 'Territoire';
-        // Status dérivé : un nœud sans source liée est "draft" (brouillon).
-        // Le proto détermine active via (node.sources.length > 0 && !placeholder).
-        // Sprint 2 : pas de sources liées aux nœuds, donc tous sont "draft".
+        // nature_history "Territoire:" → type "Suisse" (racine), "Territoire:Canton:" → "Canton"
+        const type = parts.length === 1 ? 'Suisse' : (parts[1] || 'Territoire');
+        const isRoot = t.parent_uuid === null;
         return {
           id: t.uuid,
           nom: t.nom,
           type,
-          status: 'draft',
-          permanent: false,
+          status: isRoot ? 'active' : 'draft',
+          permanent: isRoot,
           placeholder: false,
           sources: [],
-          parentId: t.parent_uuid || ROOT_ID,
+          // Suisse a parent_uuid=null → pas de parentId (racine de l'arbre)
+          parentId: t.parent_uuid || null,
         };
       });
 

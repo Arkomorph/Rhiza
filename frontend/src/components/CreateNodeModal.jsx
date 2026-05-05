@@ -2,7 +2,6 @@
 import React from 'react';
 import { C, F } from '../config/theme.js';
 import { TC } from '../config/palettes.js';
-import { ROOT } from '../config/constants.js';
 import { CATALOG } from '../data/catalog.js';
 import { getIntermediaryTypes } from '../helpers/spatial.js';
 import useSchemaStore from '../stores/useSchemaStore.js';
@@ -10,9 +9,13 @@ import Icon from './Icon.jsx';
 import ModalShell from './ModalShell.jsx';
 
 function getParentName(parentId, nodes) {
-  if (parentId === ROOT.id) return ROOT.nom;
   const p = nodes.find(n => n.id === parentId);
   return p ? p.nom : "—";
+}
+
+function isRoot(parentId, nodes) {
+  const p = nodes.find(n => n.id === parentId);
+  return p?.permanent ?? false;
 }
 
 export default function CreateNodeModal({
@@ -61,7 +64,7 @@ export default function CreateNodeModal({
       return;
     }
 
-    const parentType = createModal.parentId === ROOT.id ? "Suisse" : nodes.find(n => n.id === createModal.parentId)?.type || "Suisse";
+    const parentType = nodes.find(n => n.id === createModal.parentId)?.type || "Suisse";
     const intermediaries = getIntermediaryTypes(parentType, createModal.type, territoireCanonical);
 
     const newNodes = [];
@@ -143,7 +146,7 @@ export default function CreateNodeModal({
             </div>
           </div>
           {createModal.mode === "create" && (() => {
-            const parentType = createModal.parentId === ROOT.id ? "Suisse" : nodes.find(n => n.id === createModal.parentId)?.type || "Suisse";
+            const parentType = nodes.find(n => n.id === createModal.parentId)?.type || "Suisse";
             const ints = getIntermediaryTypes(parentType, createModal.type, territoireCanonical);
             return (
               <div style={{ fontSize: 10, color: C.faint, background: C.infoL, padding: "8px 10px", borderRadius: 5, marginBottom: 16, lineHeight: 1.7 }}>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { C, F } from '../config/theme.js';
 import { TC } from '../config/palettes.js';
-import { ROOT } from '../config/constants.js';
+// ROOT retiré — Suisse est un vrai nœud en base (D15)
 import { CATALOG } from '../data/catalog.js';
 import { SPATIAL_OPS, compatibleSpatialOps } from '../data/edge-types.js';
 import { lighten, colorForOntologyPath } from '../helpers/colors.js';
@@ -372,7 +372,7 @@ export default function SourceStepper({
             // La racine Suisse est ajoutée en tête : cocher Suisse = cascade sur tout.
             const targetCanonIdx = CANONICAL.indexOf(stepperDraft.targetType);
             const scopeEligibleNodes = targetCanonIdx > 0
-              ? [ROOT, ...nodes.filter(n => !n.placeholder && CANONICAL.indexOf(n.type) < targetCanonIdx)]
+              ? nodes.filter(n => !n.placeholder && CANONICAL.indexOf(n.type) < targetCanonIdx)
               : [];
 
             // Compte les nœuds cibles dans le périmètre (mock : pour l'instant, on ne peut pas vraiment compter

@@ -4,7 +4,6 @@
 import React, { useState, useEffect } from 'react';
 import { C, F, KIND_LEVEL } from '../config/theme.js';
 import { TC } from '../config/palettes.js';
-import { ROOT } from '../config/constants.js';
 import useSchemaStore from '../stores/useSchemaStore.js';
 import { lighten } from '../helpers/colors.js';
 import TreeNode from '../components/TreeNode.jsx';
@@ -18,7 +17,9 @@ export default function TerritoiresPage({
   onNodeRenamed, onEdit, onArchive, onCreateChild,
 }) {
   const { nodes, loading, error } = useTerritoiresStore();
-  const { territoireSubtypes } = useSchemaStore();
+  const { territoireSubtypes, loading: schemaLoading } = useSchemaStore();
+  // Racine = nœud sans parentId (Suisse, un vrai Territoire en base depuis D15)
+  const rootNode = nodes.find(n => n.parentId === null);
   const [selectedUuid, setSelectedUuid] = useState(null);
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -127,15 +128,19 @@ export default function TerritoiresPage({
         </div>
       </div>
 
-      {/* Arbre depuis ROOT — plus de readOnly, les callbacks sont câblés */}
+      {/* Arbre depuis la racine (Suisse = vrai nœud en base, D15) */}
       <div style={{ position: "relative", zIndex: 1 }}>
-        <TreeNode
-          node={ROOT} depth={0} nodes={nodes}
-          editingId={editingId} editingName={editingName} setEditingName={setEditingName}
-          onStartEdit={startEdit} onCommitEdit={commitEdit} onCancelEdit={cancelEdit}
-          onEdit={onEdit} onArchive={onArchive} onCreateChild={onCreateChild}
-          onSelect={(node) => !node.permanent && setSelectedUuid(node.id)}
-        />
+        {(loading || schemaLoading || !rootNode) ? (
+          <div style={{ fontSize: 11, color: C.faint, padding: 20 }}>Chargement de l'arbre...</div>
+        ) : (
+          <TreeNode
+            node={rootNode} depth={0} nodes={nodes}
+            editingId={editingId} editingName={editingName} setEditingName={setEditingName}
+            onStartEdit={startEdit} onCommitEdit={commitEdit} onCancelEdit={cancelEdit}
+            onEdit={onEdit} onArchive={onArchive} onCreateChild={onCreateChild}
+            onSelect={(node) => !node.permanent && setSelectedUuid(node.id)}
+          />
+        )}
       </div>
 
       {/* Panneau de détail */}
