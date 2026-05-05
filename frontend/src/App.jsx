@@ -7,6 +7,7 @@ import { INDENT, CASCADE_OFFSET } from './config/constants.js';
 import { CATALOG } from './data/catalog.js';
 import useSchemaStore from './stores/useSchemaStore.js';
 import useTerritoiresStore from './stores/useTerritoiresStore.js';
+import useSourcesStore from './stores/useSourcesStore.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 import {
@@ -73,10 +74,13 @@ export default function App() {
 
   const [hoveredTreePath, setHoveredTreePath] = useState(null);
 
-  // Fetch initial au montage — schéma + territoires en parallèle
+  const sourcesStore = useSourcesStore();
+
+  // Fetch initial au montage — schéma + territoires + sources en parallèle
   useEffect(() => {
     schemaStore.fetchAll();
     territoiresStore.fetchAll();
+    sourcesStore.fetchAll();
   }, []);
 
   const [sourceConfig, setSourceConfig] = useState({}); // { [sourceId]: { sourceOk, mappingOk, patternsOk, imported, hasError } }
@@ -485,10 +489,8 @@ export default function App() {
       {/* N3 — Données (catalogue des sources) */}
       {section === "donnees" && (
         <DonneesPage
-          customSources={customSources} sourceConfig={sourceConfig} nodes={nodes}
-          dataFilter={dataFilter} setDataFilter={setDataFilter}
-          expandedHistory={expandedHistory} setExpandedHistory={setExpandedHistory}
-          openSourceStepperCreate={openSourceStepperCreate} openSourceStepperEdit={openSourceStepperEdit} executeSource={executeSource}
+          openSourceStepperCreate={openSourceStepperCreate}
+          openSourceStepperEdit={openSourceStepperEdit}
         />
       )}
 
