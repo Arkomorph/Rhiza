@@ -436,15 +436,14 @@ export default function App() {
       setLines(ls);
     };
 
-    // MutationObserver : re-mesure quand des pastilles apparaissent/disparaissent
-    // dans le DOM (fetch async → render → pastilles insérées après le mount).
-    // ResizeObserver seul ne détecte que les changements de taille du container.
-    const mo = new MutationObserver(() => requestAnimationFrame(measure));
-    mo.observe(container, { childList: true, subtree: true });
+    // Mesure initiale après que React a peint les pastilles.
+    // Le useEffect se re-déclenche quand `nodes` change (fetch async),
+    // donc les pastilles sont dans le DOM à ce moment.
+    // setTimeout 0 laisse le navigateur peindre avant de mesurer.
+    const timer = setTimeout(measure, 0);
     const ro = new ResizeObserver(measure);
     ro.observe(container);
-    requestAnimationFrame(measure);
-    return () => { mo.disconnect(); ro.disconnect(); };
+    return () => { clearTimeout(timer); ro.disconnect(); };
   }, [nodes, section]);
 
   // ─── Arbre de lignes SVG pour la modale d'archivage ────────────────
