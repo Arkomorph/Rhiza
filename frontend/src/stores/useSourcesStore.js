@@ -59,6 +59,7 @@ const useSourcesStore = create((set, get) => ({
       const { grouped, uncategorized } = groupByTargetType(sources);
       const nextId = computeNextId(allSources);
 
+      console.log(`[sources] fetchAll: ${sources.length} actives, nextId=${nextId}`);
       set({
         sources,
         sourcesByTargetType: grouped,
@@ -97,9 +98,12 @@ const useSourcesStore = create((set, get) => ({
   },
 
   deleteSource: async (id) => {
+    console.log(`[sources] deleteSource ${id}...`);
     const r = await fetch(`${API_BASE}/sources/${encodeURIComponent(id)}`, { method: 'DELETE' });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    console.log(`[sources] DELETE ${id} ok, refetching...`);
     await get().fetchAll();
+    console.log(`[sources] refetch done, sources count: ${get().sources.length}`);
   },
 }));
 

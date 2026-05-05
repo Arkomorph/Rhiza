@@ -32,8 +32,10 @@ export default function DonneesPage({
 
   const confirmDelete = useCallback(async () => {
     if (!deleteModal) return;
+    const deletedId = deleteModal.id;
+    setDeleteModal(null);
     try {
-      await deleteSource(deleteModal.id);
+      await deleteSource(deletedId);
       // Refetch les archivées si le toggle est actif
       if (showArchived) {
         const r = await fetch(`${API_BASE}/sources?include_archived=true`);
@@ -45,7 +47,6 @@ export default function DonneesPage({
     } catch (err) {
       console.error('[sources] delete failed', err);
     }
-    setDeleteModal(null);
   }, [deleteModal, deleteSource, showArchived]);
 
   // Fetch archivées quand toggle activé
