@@ -50,8 +50,14 @@ const useSourcesStore = create((set, get) => ({
       const data = await r.json();
       const sources = data.sources || [];
 
+      // Pour nextId, on doit connaître TOUS les IDs (y compris archivés)
+      // pour ne jamais réutiliser un ID archivé (confusion audit trail)
+      const rAll = await fetch(`${API_BASE}/sources?include_archived=true`);
+      const allData = rAll.ok ? await rAll.json() : data;
+      const allSources = allData.sources || sources;
+
       const { grouped, uncategorized } = groupByTargetType(sources);
-      const nextId = computeNextId(sources);
+      const nextId = computeNextId(allSources);
 
       set({
         sources,
