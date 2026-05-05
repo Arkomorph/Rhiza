@@ -155,34 +155,63 @@ export default function DonneesPage({
 
   return (
     <div style={{ display: "flex", gap: 24, maxWidth: 1200, margin: "0 auto", padding: "28px 24px" }}>
-      {/* Barre latérale — arbre types en lecture seule */}
+      {/* Barre latérale */}
       <div style={{ width: 200, flexShrink: 0 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, marginBottom: 10 }}>
+
+        {/* ── Filtres généraux ── */}
+        <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, marginBottom: 8 }}>
+          Filtres généraux
+        </div>
+        {[
+          { key: null, label: `Toutes (${sources.length})`, active: selectedType === null && !showArchived },
+          { key: '__archived__', label: `Voir archivées (${archivedCount})`, active: showArchived },
+          { key: '__sync__', label: 'Synchronisables (0)', disabled: true, tooltip: 'Disponible quand des patterns seront configurés (J7)' },
+        ].map(f => (
+          <div
+            key={f.key || '__all__'}
+            onClick={() => {
+              if (f.disabled) return;
+              if (f.key === '__archived__') {
+                if (!showArchived) toggleArchived(); else { setShowArchived(false); setSelectedType(null); }
+              } else {
+                if (showArchived) setShowArchived(false);
+                setSelectedType(f.key);
+              }
+            }}
+            style={{
+              fontSize: 11, padding: "4px 8px", borderRadius: 4, marginBottom: 2,
+              cursor: f.disabled ? "not-allowed" : "pointer",
+              opacity: f.disabled ? 0.4 : 1,
+              background: f.active ? C.accentL : "transparent",
+              color: f.active ? C.accent : (f.key === '__archived__' ? C.error : C.text),
+              fontWeight: f.active ? 600 : 400,
+              fontStyle: f.key === '__archived__' || f.disabled ? "italic" : "normal",
+            }}
+            title={f.tooltip || undefined}
+          >
+            {f.label}
+          </div>
+        ))}
+
+        {/* ── Filtrer par type ── */}
+        <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, marginTop: 16, marginBottom: 8 }}>
           Filtrer par type
         </div>
-        <div
-          onClick={() => setSelectedType(null)}
-          style={{
-            fontSize: 11, padding: "4px 8px", borderRadius: 4, cursor: "pointer", marginBottom: 2,
-            background: selectedType === null ? C.accentL : "transparent",
-            color: selectedType === null ? C.accent : C.text,
-            fontWeight: selectedType === null ? 600 : 400,
-          }}
-        >
-          Toutes ({sources.length})
-        </div>
         {sidebarTypes.map(group => (
-          <div key={group.label} style={{ marginTop: 8 }}>
+          <div key={group.label} style={{ marginBottom: 6 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase", marginBottom: 4 }}>
               {group.label}
             </div>
             {group.types.map(t => {
               const count = (sourcesByTargetType[t.key] || []).length;
-              const isSelected = selectedType === t.key;
+              const isSelected = selectedType === t.key && !showArchived;
               return (
                 <div
                   key={t.key}
-                  onClick={() => setSelectedType(isSelected ? null : t.key)}
+                  onClick={() => {
+                    if (showArchived) setShowArchived(false);
+                    setSelectedType(isSelected ? null : t.key);
+                  }}
                   style={{
                     fontSize: 11, padding: "3px 8px", paddingLeft: 8 + t.depth * 12, borderRadius: 4,
                     cursor: "pointer", marginBottom: 1,
@@ -199,43 +228,22 @@ export default function DonneesPage({
             })}
           </div>
         ))}
-        {sourcesUncategorized.length > 0 && (
-          <div
-            onClick={() => setSelectedType('__none__')}
-            style={{
-              fontSize: 11, padding: "4px 8px", borderRadius: 4, cursor: "pointer", marginTop: 8,
-              background: selectedType === '__none__' ? C.alt : "transparent",
-              color: C.faint, fontStyle: "italic",
-            }}
-          >
-            Sans type ({sourcesUncategorized.length})
-          </div>
-        )}
-
-        {/* Toggle archivées */}
+        {/* Sans type — dans la catégorie filtrer par type */}
         <div
-          onClick={toggleArchived}
+          onClick={() => {
+            if (showArchived) setShowArchived(false);
+            setSelectedType(selectedType === '__none__' ? null : '__none__');
+          }}
           style={{
-            fontSize: 11, padding: "4px 8px", borderRadius: 4, cursor: "pointer", marginTop: 8,
-            background: showArchived ? C.alt : "transparent",
-            color: showArchived ? C.error : C.faint, fontStyle: "italic",
+            fontSize: 11, padding: "4px 8px", borderRadius: 4, cursor: "pointer", marginTop: 4,
+            background: selectedType === '__none__' && !showArchived ? C.alt : "transparent",
+            color: C.faint, fontStyle: "italic",
           }}
         >
-          {showArchived ? `✕ Masquer archivées (${archivedCount})` : `Voir archivées (${archivedCount})`}
+          Sans type ({sourcesUncategorized.length})
         </div>
 
-        {/* Filtre Synchronisables — Sprint 2: toujours 0 (patterns = J7) */}
-        <div
-          style={{
-            fontSize: 11, padding: "4px 8px", borderRadius: 4, marginTop: 4,
-            opacity: 0.4, cursor: "not-allowed", color: C.faint, fontStyle: "italic",
-          }}
-          title="Disponible quand des patterns seront configurés (J7)"
-        >
-          Synchronisables (0)
-        </div>
-
-        {/* Bouton synchro groupe — placeholder J7 */}
+        {/* Bouton synchro — placeholder J7 */}
         <div style={{ marginTop: 16, borderTop: `1px solid ${C.blight}`, paddingTop: 8 }}>
           <span style={{ fontSize: 10, color: C.faint, opacity: 0.4, cursor: "not-allowed" }} title="Synchroniser les patterns — à venir J7">
             ↻ Synchro patterns (J7)
