@@ -138,6 +138,11 @@ function buildSpatialHierarchy(types, expectedEdges) {
     if (!childrenOf[t.key]) childrenOf[t.key] = [];
   }
 
+  // Alias : la racine UI "Suisse" représente la racine ontologique "Territoire"
+  // pour les cascades "+". Canton a ContenuDans → Territoire, pas → Suisse.
+  // Dette Sprint 3 : découpler proprement type/label de la racine.
+  childrenOf['Suisse'] = childrenOf['Territoire'] || [];
+
   // Chaîne canonique par marche linéaire depuis Territoire via childrenOf
   const canonical = ['Suisse'];
   const visited = new Set(['Suisse']);
