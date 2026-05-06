@@ -84,10 +84,14 @@ async function logBufferPlugin(fastify: FastifyInstance) {
   fastify.decorate('logBuffer', ringBuffer);
 
   // Tenter le patch du stream Pino (fonctionne en production, JSON stdout)
-  // En Pino 10, le stream est accessible via le symbol pino.stream
-  const pinoStreamSym = Symbol.for('pino.stream');
+  // En Pino 10, le stream est un symbol local (pas Symbol.for), on le cherche par description
   const logger = fastify.log as unknown as Record<symbol, unknown>;
-  const rawStream = logger[pinoStreamSym] as { write?: (chunk: string) => boolean } | undefined;
+  const pinoStreamSym = Object.getOwnPropertySymbols(logger).find(
+    s => s.description === 'pino.stream',
+  );
+  const rawStream = pinoStreamSym
+    ? (logger[pinoStreamSym] as { write?: (chunk: string) => boolean } | undefined)
+    : undefined;
 
   if (rawStream && typeof rawStream.write === 'function') {
     const originalWrite = rawStream.write.bind(rawStream);
