@@ -98,6 +98,8 @@ async function logBufferPlugin(fastify: FastifyInstance) {
     rawStream.write = (chunk: string): boolean => {
       try {
         const parsed = JSON.parse(chunk);
+        // Auto-exclusion : la route /logs ne se logue pas elle-même
+        if (parsed.url && typeof parsed.url === 'string' && parsed.url.startsWith('/logs')) return originalWrite(chunk);
         const level = LEVEL_MAP[parsed.level] ?? 'info';
         ringBuffer.push({
           timestamp: parsed.time ? new Date(parsed.time).toISOString() : new Date().toISOString(),
@@ -115,6 +117,7 @@ async function logBufferPlugin(fastify: FastifyInstance) {
     // Fallback : capturer les logs via les hooks de requête
     // Couvre les cas où le stream n'est pas directement patchable (dev/pino-pretty)
     fastify.addHook('onResponse', (request, reply, done) => {
+      if (request.url.startsWith('/logs')) return done();
       ringBuffer.push({
         timestamp: new Date().toISOString(),
         level: reply.statusCode >= 500 ? 'error' : reply.statusCode >= 400 ? 'warn' : 'info',

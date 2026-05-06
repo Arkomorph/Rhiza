@@ -27,7 +27,7 @@ const envSchema = z.object({
 
   // Logs endpoint
   LOGS_TOKEN: z.string().min(16).default('dev-logs-token-change-me!!'),
-  LOGS_BUFFER_SIZE: z.coerce.number().default(1000),
+  LOGS_BUFFER_SIZE: z.coerce.number().default(10000),
 });
 
 const parsed = envSchema.safeParse(process.env);
