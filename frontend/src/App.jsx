@@ -32,6 +32,7 @@ import DonneesPage from './sections/DonneesPage.jsx';
 import TerritoiresPage from './sections/TerritoiresPage.jsx';
 import SchemaPage from './sections/SchemaPage.jsx';
 import log from './logger.js';
+import { Toaster } from 'sonner';
 
 // ─── ANCIEN BLOC — supprimé, voir components/ ───────────────────────
 // DataTable, Icon, PatternPastille, PatternPropTable extraits.
@@ -440,6 +441,7 @@ export default function App() {
   // ─── Main app ────────────────────────────────────────────────────
   return (
     <div style={{ background: C.bg, minHeight: "100vh", fontFamily: F.body }}>
+      <Toaster position="top-right" richColors />
       {/* Header */}
       <div style={{ padding: "10px 24px", borderBottom: `1px solid ${C.blight}`, background: C.surface, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>

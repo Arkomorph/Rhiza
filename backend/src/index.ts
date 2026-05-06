@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
+import multipart from '@fastify/multipart';
 import { config } from './config.js';
 import { migrate } from './db/migrate.js';
 import requestLogger from './plugins/request-logger.js';
@@ -32,6 +33,7 @@ await fastify.register(cors, {
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 });
 await fastify.register(rateLimit, { max: 120, timeWindow: '1 minute' });
+await fastify.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
 await fastify.register(requestLogger);
 await fastify.register(logBufferPlugin);
 await fastify.register(jwtPlugin);

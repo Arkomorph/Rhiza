@@ -97,6 +97,20 @@ const useSourcesStore = create((set, get) => ({
     await get().fetchAll();
   },
 
+  executeSource: async (id, file, mapping) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('mapping', JSON.stringify(mapping));
+    const r = await fetch(`${API_BASE}/sources/${encodeURIComponent(id)}/execute`, {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+    await get().fetchAll();
+    return data;
+  },
+
   deleteSource: async (id) => {
     console.log(`[sources] deleteSource ${id}...`);
     const r = await fetch(`${API_BASE}/sources/${encodeURIComponent(id)}`, { method: 'DELETE' });

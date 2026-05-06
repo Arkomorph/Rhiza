@@ -1,13 +1,15 @@
-// ─── Section Données — catalogue des sources (J8a) ───────────────────
+// ─── Section Données — catalogue des sources (J8a + J8b) ─────────────
 // Layout 2 colonnes : arbre latéral type/sous-type (filtre) + DataTable.
-// Données depuis useSourcesStore (Zustand). Plus de CATALOG hardcodé.
+// J8b : bouton Play conditionnel + mini-modale exécuter GeoJSON.
 import React, { useState, useEffect } from 'react';
 import { C, F } from '../config/theme.js';
 import { TC } from '../config/palettes.js';
+import { toast } from 'sonner';
 import DataTable from '../components/DataTable.jsx';
 import Icon from '../components/Icon.jsx';
 import useSourcesStore from '../stores/useSourcesStore.js';
 import useSchemaStore from '../stores/useSchemaStore.js';
+import useTerritoiresStore from '../stores/useTerritoiresStore.js';
 import ModalShell from '../components/ModalShell.jsx';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.rhiza.ch';
@@ -32,6 +34,12 @@ export default function DonneesPage({
   const [archivedSources, setArchivedSources] = useState([]);
   const [archivedCount, setArchivedCount] = useState(0);
   const [deleteModal, setDeleteModal] = useState(null); // { id, nom } ou null
+  const [executeModal, setExecuteModal] = useState(null); // source object ou null
+  const [executingSourceId, setExecutingSourceId] = useState(null);
+  const [execFile, setExecFile] = useState(null);
+  const [execNomField, setExecNomField] = useState('');
+  const [execMappings, setExecMappings] = useState([]); // [{ source, target }]
+  const [errorsModal, setErrorsModal] = useState(null); // errors[] ou null
 
   // Compteur d'archivées — fetch une fois au montage
   useEffect(() => {
@@ -100,6 +108,48 @@ export default function DonneesPage({
       || (s.id || "").toLowerCase().includes(q);
   });
 
+  // ── Execute modal helpers ──
+  const openExecuteModal = (source) => {
+    setExecuteModal(source);
+    setExecFile(null);
+    setExecNomField('');
+    setExecMappings([]);
+  };
+
+  const closeExecuteModal = () => {
+    if (executingSourceId) {
+      if (!window.confirm("Une exécution est en cours, fermer ne l'annulera pas (limitation Sprint 2). Continuer ?")) return;
+    }
+    setExecuteModal(null);
+  };
+
+  const runExecution = async () => {
+    if (!executeModal || !execFile || !execNomField) return;
+    const sourceId = executeModal.id;
+    setExecutingSourceId(sourceId);
+    try {
+      const mapping = { nom_field: execNomField, properties: execMappings.filter(m => m.source && m.target) };
+      const result = await sourcesStore.executeSource(sourceId, execFile, mapping);
+      setExecuteModal(null);
+      setExecutingSourceId(null);
+      // Refetch territoires
+      useTerritoiresStore.getState().fetchAll();
+      if (result.failed > 0) {
+        toast.warning(`${result.summary}`, {
+          action: { label: 'Voir le détail', onClick: () => setErrorsModal(result.errors) },
+          duration: 8000,
+        });
+      } else {
+        toast.success(result.summary);
+      }
+    } catch (err) {
+      setExecutingSourceId(null);
+      toast.error(`Erreur : ${err.message}`);
+    }
+  };
+
+  const schemaProps = executeModal ? useSchemaStore.getState().getSchemaPropsForType(executeModal.target_type) : [];
+
   // Colonnes DataTable
   const columns = [
     { key: "id", label: "ID", width: "0.5fr" },
@@ -129,25 +179,38 @@ export default function DonneesPage({
         </span>
       );
     }},
-    { key: "_actions", label: "", width: "90px", render: row => (
-      <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
-        <span style={{ opacity: 0.3, cursor: "not-allowed" }} title="Exécuter — à venir J8b">
-          <Icon name="play" size={12} color={C.faint} />
-        </span>
-        <span style={{ opacity: 0.3, cursor: "not-allowed" }} title="Configurer — à venir J7">
-          <Icon name="pencil" size={12} color={C.faint} />
-        </span>
-        {!row.archived_at && (
-          <span
-            onClick={() => setDeleteModal({ id: row.id, nom: row.nom })}
-            style={{ cursor: "pointer" }}
-            title="Archiver cette source"
-          >
-            <Icon name="trash" size={12} color={C.error} />
+    { key: "_actions", label: "", width: "90px", render: row => {
+      const canExecute = row.target_type && row.format === 'GeoJSON' && !row.archived_at;
+      const execTooltip = !row.target_type ? "Configurez d'abord le type cible" : row.format !== 'GeoJSON' ? "Format non supporté Sprint 2" : "Exécuter";
+      const isExecuting = executingSourceId === row.id;
+      return (
+        <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
+          {isExecuting ? (
+            <span style={{ fontSize: 10, color: C.info, animation: "spin 1s linear infinite" }}>...</span>
+          ) : (
+            <span
+              onClick={() => canExecute && openExecuteModal(row)}
+              style={{ opacity: canExecute ? 1 : 0.3, cursor: canExecute ? "pointer" : "not-allowed" }}
+              title={execTooltip}
+            >
+              <Icon name="play" size={12} color={canExecute ? C.accent : C.faint} />
+            </span>
+          )}
+          <span style={{ opacity: 0.3, cursor: "not-allowed" }} title="Configurer — à venir J7">
+            <Icon name="pencil" size={12} color={C.faint} />
           </span>
-        )}
-      </span>
-    )},
+          {!row.archived_at && (
+            <span
+              onClick={() => setDeleteModal({ id: row.id, nom: row.nom })}
+              style={{ cursor: "pointer" }}
+              title="Archiver cette source"
+            >
+              <Icon name="trash" size={12} color={C.error} />
+            </span>
+          )}
+        </span>
+      );
+    }},
   ];
 
   // Arbre latéral : types ontologiques groupés
@@ -316,6 +379,95 @@ export default function DonneesPage({
                 style={{ fontSize: 12, padding: "6px 14px", border: "none", borderRadius: 6, background: C.error, color: "#fff", cursor: "pointer", fontWeight: 600 }}
               >Archiver</button>
             </div>
+          </div>
+        </ModalShell>
+      )}
+
+      {/* Modale Execute — J8b */}
+      {executeModal && (
+        <ModalShell title={`Exécuter ${executeModal.id}`} subtitle={executeModal.nom} onClose={closeExecuteModal} width={620}>
+          <div style={{ padding: "0 4px", overflowY: "auto", maxHeight: "60vh" }}>
+            {/* Fichier */}
+            <label style={{ fontSize: 11, fontWeight: 600, color: C.muted, display: "block", marginBottom: 6 }}>Fichier GeoJSON</label>
+            <input
+              type="file"
+              accept=".geojson,.json"
+              onChange={e => setExecFile(e.target.files?.[0] || null)}
+              style={{ fontSize: 12, marginBottom: 16 }}
+            />
+
+            {/* Mapping nom */}
+            <label style={{ fontSize: 11, fontWeight: 600, color: C.muted, display: "block", marginBottom: 6 }}>
+              Champ source pour le nom <span style={{ color: C.error }}>*</span>
+            </label>
+            <input
+              value={execNomField}
+              onChange={e => setExecNomField(e.target.value)}
+              placeholder="Ex: Nom, name, label..."
+              style={{ width: "100%", padding: "8px 12px", fontSize: 12, border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box", marginBottom: 16, fontFamily: F.body }}
+            />
+
+            {/* Mapping propriétés */}
+            <label style={{ fontSize: 11, fontWeight: 600, color: C.muted, display: "block", marginBottom: 6 }}>Propriétés supplémentaires</label>
+            {execMappings.map((m, i) => (
+              <div key={i} style={{ display: "flex", gap: 8, marginBottom: 6, alignItems: "center" }}>
+                <input
+                  value={m.source}
+                  onChange={e => { const next = [...execMappings]; next[i] = { ...m, source: e.target.value }; setExecMappings(next); }}
+                  placeholder="Champ source"
+                  style={{ flex: 1, padding: "6px 10px", fontSize: 11, border: `1px solid ${C.border}`, borderRadius: 5, outline: "none", fontFamily: F.body }}
+                />
+                <select
+                  value={m.target}
+                  onChange={e => { const next = [...execMappings]; next[i] = { ...m, target: e.target.value }; setExecMappings(next); }}
+                  style={{ flex: 1, padding: "6px 10px", fontSize: 11, border: `1px solid ${C.border}`, borderRadius: 5, outline: "none", fontFamily: F.body, background: C.surface }}
+                >
+                  <option value="">-- Propriété cible --</option>
+                  {schemaProps.map(p => <option key={p.uuid || p.key} value={p.key}>{p.label || p.key}</option>)}
+                </select>
+                <span
+                  onClick={() => setExecMappings(execMappings.filter((_, j) => j !== i))}
+                  style={{ cursor: "pointer", fontSize: 14, color: C.error, padding: "0 4px" }}
+                >x</span>
+              </div>
+            ))}
+            <button
+              onClick={() => setExecMappings([...execMappings, { source: '', target: '' }])}
+              style={{ fontSize: 11, padding: "4px 10px", border: `1px dashed ${C.border}`, borderRadius: 5, background: "transparent", color: C.muted, cursor: "pointer", marginBottom: 20, fontFamily: F.body }}
+            >+ Ajouter un mapping</button>
+
+            {/* Actions */}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 8, borderTop: `1px solid ${C.blight}` }}>
+              <button
+                onClick={closeExecuteModal}
+                style={{ fontSize: 12, padding: "8px 16px", border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: "pointer", fontFamily: F.body }}
+              >Annuler</button>
+              <button
+                onClick={runExecution}
+                disabled={!execFile || !execNomField || !!executingSourceId}
+                style={{
+                  fontSize: 12, padding: "8px 16px", border: "none", borderRadius: 6,
+                  background: (!execFile || !execNomField || executingSourceId) ? C.alt : C.accent,
+                  color: (!execFile || !execNomField || executingSourceId) ? C.faint : "#fff",
+                  cursor: (!execFile || !execNomField || executingSourceId) ? "not-allowed" : "pointer",
+                  fontWeight: 600, fontFamily: F.body,
+                }}
+              >{executingSourceId ? "Exécution en cours..." : "Lancer l'exécution"}</button>
+            </div>
+          </div>
+        </ModalShell>
+      )}
+
+      {/* Modale détail erreurs */}
+      {errorsModal && (
+        <ModalShell title="Erreurs d'exécution" onClose={() => setErrorsModal(null)} width={600}>
+          <div style={{ maxHeight: "60vh", overflowY: "auto", padding: "0 4px" }}>
+            {errorsModal.map((err, i) => (
+              <div key={i} style={{ padding: "6px 0", borderBottom: `1px solid ${C.blight}`, fontSize: 11 }}>
+                <span style={{ fontWeight: 600, color: C.error, marginRight: 8 }}>Feature {err.feature_index}</span>
+                <span style={{ color: C.text }}>{err.reason}</span>
+              </div>
+            ))}
           </div>
         </ModalShell>
       )}

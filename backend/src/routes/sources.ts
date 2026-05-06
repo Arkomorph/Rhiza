@@ -5,6 +5,9 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import sql from '../db/postgres.js';
+import { runCypher } from '../db/neo4j.js';
+import { auditMetier } from '../audit.js';
+import { propertyColumns } from '../helpers.js';
 
 // ─── Validation Zod ──────────────────────────────────────────────────
 
@@ -228,6 +231,167 @@ const sourcesRoutes: FastifyPluginAsync = async (fastify) => {
     fastify.log.info({ module: 'sources', action: 'DELETE', resource_id: id, duration_ms: Date.now() - start }, 'source archived');
 
     return { ok: true };
+  });
+
+  // ══════════════════════════════════════════════════════════════════
+  // POST /sources/:id/execute — moteur d'exécution GeoJSON (J8b)
+  // ══════════════════════════════════════════════════════════════════
+
+  fastify.post('/:id/execute', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const start = Date.now();
+
+    // a) Vérifier la source
+    const [source] = await sql`SELECT * FROM config.sources WHERE id = ${id} AND archived_at IS NULL`;
+    if (!source) { reply.code(404); return { error: 'Source non trouvée' }; }
+    if (!source.target_type) { reply.code(400); return { error: 'Configurez d\'abord le type cible (target_type) sur cette source' }; }
+    if (source.format !== 'GeoJSON') { reply.code(400); return { error: `Format "${source.format}" non supporté Sprint 2 — seul GeoJSON est pris en charge` }; }
+
+    // b) Parser le multipart
+    let fileBuffer: Buffer | null = null;
+    let mappingRaw: string | null = null;
+
+    const parts = request.parts();
+    for await (const part of parts) {
+      if (part.type === 'file' && part.fieldname === 'file') {
+        fileBuffer = await part.toBuffer();
+      } else if (part.type === 'field' && part.fieldname === 'mapping') {
+        mappingRaw = part.value as string;
+      }
+    }
+
+    if (!fileBuffer) { reply.code(400); return { error: 'Fichier GeoJSON manquant (champ "file")' }; }
+    if (!mappingRaw) { reply.code(400); return { error: 'Mapping manquant (champ "mapping")' }; }
+
+    // c) Parser et valider le GeoJSON
+    let geojson: { type: string; features: Array<{ type: string; properties: Record<string, unknown>; geometry: unknown }> };
+    try {
+      geojson = JSON.parse(fileBuffer.toString('utf-8'));
+    } catch { reply.code(400); return { error: 'Fichier JSON invalide' }; }
+
+    if (geojson.type !== 'FeatureCollection' || !Array.isArray(geojson.features)) {
+      reply.code(400);
+      return { error: 'Le fichier doit être un GeoJSON FeatureCollection' };
+    }
+
+    // Parser le mapping
+    let mapping: { nom_field: string; properties?: Array<{ source: string; target: string }> };
+    try {
+      mapping = JSON.parse(mappingRaw);
+    } catch { reply.code(400); return { error: 'Mapping JSON invalide' }; }
+
+    if (!mapping.nom_field) { reply.code(400); return { error: 'nom_field est obligatoire dans le mapping' }; }
+
+    // d) INSERT initial dans source_executions
+    const [exec] = await sql`
+      INSERT INTO config.source_executions (source_id, executed_by, summary, success, duration_ms)
+      VALUES (${id}, NULL, 'En cours', NULL, NULL)
+      RETURNING id
+    `;
+    const executionId = exec.id as number;
+
+    fastify.log.info({ module: 'execution', action: 'START', source_id: id, execution_id: executionId }, 'execution started');
+
+    // f) Pour chaque feature
+    const total = geojson.features.length;
+    let created = 0;
+    let failed = 0;
+    const errors: Array<{ feature_index: number; reason: string }> = [];
+    const targetType = source.target_type as string;
+    const natureHistory = `Territoire:${targetType}:`;
+
+    for (let i = 0; i < geojson.features.length; i++) {
+      const feature = geojson.features[i];
+      try {
+        const props = feature.properties || {};
+        const nom = props[mapping.nom_field];
+        if (!nom) throw new Error(`Champ "${mapping.nom_field}" vide ou absent`);
+
+        const geomJson = feature.geometry ? JSON.stringify(feature.geometry) : null;
+
+        // Postgres : créer le territoire + nature_history + properties mappées
+        const uuid = await sql.begin(async (tx) => {
+          let inserted;
+          if (geomJson) {
+            [inserted] = await tx`
+              INSERT INTO metier.territoires (nom, geom)
+              VALUES (${String(nom)}, ST_SetSRID(ST_GeomFromGeoJSON(${geomJson}), 2056))
+              RETURNING uuid
+            `;
+          } else {
+            [inserted] = await tx`
+              INSERT INTO metier.territoires (nom)
+              VALUES (${String(nom)})
+              RETURNING uuid
+            `;
+          }
+          const nodeUuid = inserted.uuid as string;
+
+          // nature_history
+          await tx`
+            INSERT INTO metier.properties (node_uuid, property_name, value_text, source, confidence)
+            VALUES (${nodeUuid}, 'nature_history', ${natureHistory}, 'pipeline', 'high')
+          `;
+
+          // Propriétés mappées
+          if (mapping.properties) {
+            for (const pm of mapping.properties) {
+              const val = props[pm.source];
+              if (val === undefined || val === null) continue;
+              const cols = propertyColumns(val);
+              await tx`
+                INSERT INTO metier.properties (node_uuid, property_name, value_text, value_number, value_json, source, confidence)
+                VALUES (${nodeUuid}, ${pm.target}, ${cols.value_text}, ${cols.value_number}, ${cols.value_json ? sql.json(cols.value_json) : null}, 'pipeline', 'medium')
+              `;
+            }
+          }
+
+          return nodeUuid;
+        });
+
+        // Neo4j : créer le nœud (pas d'arête — J7)
+        await runCypher('CREATE (n:Territoire {uuid: $uuid})', { uuid });
+
+        // Audit métier
+        const after = { nom: String(nom), subtype: natureHistory, source_id: id };
+        await auditMetier('INSERT', 'territoires', uuid, null, after, 'pipeline', executionId, id);
+
+        created++;
+      } catch (err: unknown) {
+        failed++;
+        const reason = err instanceof Error ? err.message : String(err);
+        errors.push({ feature_index: i, reason });
+      }
+    }
+
+    // g) UPDATE source_executions
+    const summary = `${created} créées sur ${total}, ${failed} erreurs`;
+    const durationMs = Date.now() - start;
+    await sql`
+      UPDATE config.source_executions
+      SET summary = ${summary},
+          changes = ${sql.json({ total_features: total, created, failed, errors })}::jsonb,
+          duration_ms = ${durationMs},
+          success = ${created > 0}
+      WHERE id = ${executionId}
+    `;
+
+    fastify.log.info({
+      module: 'execution', action: 'COMPLETE', source_id: id,
+      execution_id: executionId, created, failed, duration_ms: durationMs,
+    }, 'execution completed');
+
+    // h) Retourner le résumé
+    return {
+      execution_id: executionId,
+      source_id: id,
+      summary,
+      total_features: total,
+      created,
+      failed,
+      errors,
+      duration_ms: durationMs,
+    };
   });
 };
 

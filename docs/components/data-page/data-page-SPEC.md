@@ -1,6 +1,6 @@
 # Composant Data-Page — Référentiel canonique
 
-**Référence visuelle** : état post-J8a. Toute divergence de l'implémentation par rapport à cette SPEC doit être justifiée par un commit avec référence explicite à la décision.
+**Référence visuelle** : état post-J8b. Toute divergence de l'implémentation par rapport à cette SPEC doit être justifiée par un commit avec référence explicite à la décision.
 
 ---
 
@@ -35,7 +35,7 @@ Deux colonnes :
 | Portail | 0.8fr | Texte brut |
 | Type cible | 0.8fr | Coloré par type, "—" si NULL |
 | Statut | 0.8fr | Badge coloré + badge "incomplet" si pas d'endpoint |
-| Actions | 90px | Play (disabled J8b) + Pencil (disabled J7) + Trash (actif) |
+| Actions | 90px | Play (conditionnel J8b) + Pencil (disabled J7) + Trash (actif) |
 
 Au-dessus de la table : compteur résultats à gauche, bouton "↻ Synchro patterns" disabled à droite.
 
@@ -67,6 +67,50 @@ Au-dessus de la table : compteur résultats à gauche, bouton "↻ Synchro patte
 - "Sauvegarder & fermer" : `POST /sources`, refetch store, modale fermée
 - "Suivant" : passe en Step 2 (draft local, pas de persistance — J7)
 - Steps 2-3 restent en draft local Sprint 2
+
+---
+
+## Bouton Play — exécution (J8b)
+
+### Conditions d'activation
+
+| Condition | État du bouton |
+|-----------|---------------|
+| `target_type IS NOT NULL` ET `format = 'GeoJSON'` | Actif (vert accent) |
+| `target_type IS NULL` | Désactivé, tooltip "Configurez d'abord le type cible" |
+| `format != 'GeoJSON'` | Désactivé, tooltip "Format non supporté Sprint 2" |
+| Exécution en cours sur cette source | Spinner "..." |
+
+### Mini-modale "Exécuter"
+
+Au clic Play, ouverture d'une modale 620px :
+
+**Contenu** :
+- Input file (accept `.geojson`, `.json`)
+- Champ obligatoire "Champ source pour le nom" (input texte)
+- Tableau "Propriétés supplémentaires" à deux colonnes :
+  - Source (input texte libre)
+  - Cible (dropdown alimenté par `getSchemaPropsForType(target_type)`)
+- Bouton "+ Ajouter un mapping"
+- Bouton "Annuler" + "Lancer l'exécution"
+
+**Pendant l'exécution** :
+- Bouton "Lancer" désactivé avec texte "Exécution en cours..."
+- Bouton Play sur la ligne = spinner
+- Fermeture de la modale : confirm "Une exécution est en cours..."
+
+**Résultat** :
+- Toast sonner (top-right) avec résumé
+- Si erreurs > 0 : toast warning avec lien "Voir le détail" → modale erreurs
+- Refetch stores sources + territoires
+
+---
+
+## Modale détail erreurs
+
+Liste scrollable des erreurs d'exécution :
+- Feature index (bold rouge) + reason (texte)
+- Fermeture par X ou overlay
 
 ---
 
