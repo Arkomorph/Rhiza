@@ -28,16 +28,16 @@ export default async function logsRoutes(fastify: FastifyInstance) {
   fastify.get('/', {
     config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
   }, async (request, reply) => {
-    // Auth Bearer
+    // Auth : header Bearer prioritaire, fallback ?token= en query
     const auth = request.headers.authorization;
-    if (!auth || !auth.startsWith('Bearer ') || auth.slice(7) !== config.LOGS_TOKEN) {
+    const query = request.query as {
+      limit?: string; since?: string; level?: string; module?: string; token?: string;
+    };
+    const token = auth?.startsWith('Bearer ') ? auth.slice(7) : query.token;
+    if (!token || token !== config.LOGS_TOKEN) {
       reply.code(401);
       return { error: 'Invalid or missing Bearer token' };
     }
-
-    const query = request.query as {
-      limit?: string; since?: string; level?: string; module?: string;
-    };
 
     const limit = Math.min(parseInt(query.limit ?? '100', 10) || 100, 1000);
 

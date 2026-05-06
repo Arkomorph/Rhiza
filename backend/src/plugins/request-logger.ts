@@ -1,6 +1,11 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import fp from 'fastify-plugin';
 
+// Masque ?token=xxx dans les URLs pour éviter de logger des secrets
+function redactUrl(url: string): string {
+  return url.replace(/([?&])token=[^&]*/g, '$1token=***');
+}
+
 async function requestLoggerPlugin(fastify: FastifyInstance) {
   const log = fastify.log.child({ module: 'http' });
 
@@ -9,7 +14,7 @@ async function requestLoggerPlugin(fastify: FastifyInstance) {
     log.info({
       reqId: request.id,
       method: request.method,
-      url: request.url,
+      url: redactUrl(request.url),
       ip: request.ip,
       userAgent: request.headers['user-agent'],
     }, 'incoming request');
@@ -22,7 +27,7 @@ async function requestLoggerPlugin(fastify: FastifyInstance) {
     log.info({
       reqId: request.id,
       method: request.method,
-      url: request.url,
+      url: redactUrl(request.url),
       statusCode: reply.statusCode,
       durationMs: Math.round(durationMs * 100) / 100,
     }, 'request completed');
@@ -35,7 +40,7 @@ async function requestLoggerPlugin(fastify: FastifyInstance) {
     log[level]({
       reqId: request.id,
       method: request.method,
-      url: request.url,
+      url: redactUrl(request.url),
       statusCode,
       err: { message: error.message, code: error.code },
     }, statusCode >= 500 ? 'server error' : 'client error');
