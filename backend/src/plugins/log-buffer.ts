@@ -1,13 +1,12 @@
 // ─── Log Buffer Plugin — Jalon 6.5 ──────────────────────────────────
 // Ring buffer en mémoire alimenté par les logs Pino.
-// Utilise un hook onSend-like : on écoute les logs via pino child logger
-// et on les stocke dans un buffer circulaire.
-//
-// Approche : on ajoute un hook onRequest + onResponse + onError qui
-// capturent les logs structurés dans le buffer. Les routes peuvent aussi
-// écrire directement dans le buffer via fastify.logBuffer.push().
+// En production (JSON stdout), on intercepte les logs via un hook
+// onResponse et en patchant le stream Pino sous-jacent.
+// En dev (pino-pretty), seuls les logs applicatifs (via addHook) sont
+// capturés — suffisant pour valider le flux.
 
-import { FastifyPluginAsync } from 'fastify';
+import type { FastifyInstance } from 'fastify';
+import fp from 'fastify-plugin';
 import { config } from '../config.js';
 
 export interface BufferedLog {
@@ -17,10 +16,6 @@ export interface BufferedLog {
   msg: string;
   data?: Record<string, unknown>;
 }
-
-const LEVEL_MAP: Record<number, string> = {
-  10: 'trace', 20: 'debug', 30: 'info', 40: 'warn', 50: 'error', 60: 'fatal',
-};
 
 class LogRingBuffer {
   private buffer: BufferedLog[] = [];
@@ -65,45 +60,11 @@ declare module 'fastify' {
   }
 }
 
-const logBufferPlugin: FastifyPluginAsync = async (fastify) => {
-  const ringBuffer = new LogRingBuffer(config.LOGS_BUFFER_SIZE);
-
-  // Décorer l'instance Fastify
-  fastify.decorate('logBuffer', ringBuffer);
-
-  // Intercepter les logs Pino en patchant le stream sous-jacent.
-  // En production Pino écrit du JSON dans stdout — on parse chaque ligne
-  // pour alimenter le ring buffer en parallèle.
-  const rawStream = (fastify.log as unknown as { stream?: { write?: (chunk: string) => void } }).stream;
-  if (rawStream && typeof rawStream.write === 'function') {
-    const originalStreamWrite = rawStream.write.bind(rawStream);
-    rawStream.write = (chunk: string) => {
-      // Parser le log JSON Pino
-      try {
-        const parsed = JSON.parse(chunk);
-        const level = LEVEL_MAP[parsed.level] ?? 'info';
-        ringBuffer.push({
-          timestamp: parsed.time ? new Date(parsed.time).toISOString() : new Date().toISOString(),
-          level,
-          module: parsed.module,
-          msg: parsed.msg || '',
-          data: extractData(parsed),
-        });
-      } catch {
-        // Log non-JSON (pino-pretty en dev) — on parse ce qu'on peut
-        ringBuffer.push({
-          timestamp: new Date().toISOString(),
-          level: 'info',
-          msg: typeof chunk === 'string' ? chunk.trim() : String(chunk),
-        });
-      }
-      return originalStreamWrite(chunk);
-    };
-  }
+const LEVEL_MAP: Record<number, string> = {
+  10: 'trace', 20: 'debug', 30: 'info', 40: 'warn', 50: 'error', 60: 'fatal',
 };
 
 function extractData(parsed: Record<string, unknown>): Record<string, unknown> | undefined {
-  // Extraire les champs métier (exclure les champs Pino standard)
   const exclude = new Set(['level', 'time', 'pid', 'hostname', 'msg', 'module', 'reqId', 'req', 'res']);
   const data: Record<string, unknown> = {};
   let hasData = false;
@@ -116,4 +77,55 @@ function extractData(parsed: Record<string, unknown>): Record<string, unknown> |
   return hasData ? data : undefined;
 }
 
-export default logBufferPlugin;
+async function logBufferPlugin(fastify: FastifyInstance) {
+  const ringBuffer = new LogRingBuffer(config.LOGS_BUFFER_SIZE);
+
+  // Décorer l'instance Fastify — fp() fait remonter au scope parent
+  fastify.decorate('logBuffer', ringBuffer);
+
+  // Tenter le patch du stream Pino (fonctionne en production, JSON stdout)
+  // En Pino 10, le stream est accessible via le symbol pino.stream
+  const pinoStreamSym = Symbol.for('pino.stream');
+  const logger = fastify.log as unknown as Record<symbol, unknown>;
+  const rawStream = logger[pinoStreamSym] as { write?: (chunk: string) => boolean } | undefined;
+
+  if (rawStream && typeof rawStream.write === 'function') {
+    const originalWrite = rawStream.write.bind(rawStream);
+    rawStream.write = (chunk: string): boolean => {
+      try {
+        const parsed = JSON.parse(chunk);
+        const level = LEVEL_MAP[parsed.level] ?? 'info';
+        ringBuffer.push({
+          timestamp: parsed.time ? new Date(parsed.time).toISOString() : new Date().toISOString(),
+          level,
+          module: parsed.module,
+          msg: parsed.msg || '',
+          data: extractData(parsed),
+        });
+      } catch {
+        // Non-JSON ou parse error — on ignore silencieusement
+      }
+      return originalWrite(chunk);
+    };
+  } else {
+    // Fallback : capturer les logs via les hooks de requête
+    // Couvre les cas où le stream n'est pas directement patchable (dev/pino-pretty)
+    fastify.addHook('onResponse', (request, reply, done) => {
+      ringBuffer.push({
+        timestamp: new Date().toISOString(),
+        level: reply.statusCode >= 500 ? 'error' : reply.statusCode >= 400 ? 'warn' : 'info',
+        module: 'http',
+        msg: `${request.method} ${request.url} ${reply.statusCode}`,
+        data: {
+          reqId: request.id,
+          method: request.method,
+          url: request.url,
+          statusCode: reply.statusCode,
+        },
+      });
+      done();
+    });
+  }
+}
+
+export default fp(logBufferPlugin, { name: 'log-buffer' });
