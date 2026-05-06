@@ -83,22 +83,34 @@ Au-dessus de la table : compteur résultats à gauche, bouton "↻ Synchro patte
 
 ### Workflow exécution
 
-Le Play ouvre le **SourceStepper** (même modale que Pencil) positionné sur **Step 2 (Mapping)**. Pas de mini-modale séparée. Une seule modale unifiée pour configuration ET exécution.
+Play et Pencil ouvrent la **même modale** (SourceStepper). Pas de mini-modale séparée.
 
-**Step 2 — section fichier GeoJSON** (en haut, avant le type cible) :
-- Input file (accept `.geojson`, `.json`)
-- Au chargement : FileReader parse le JSON, vérifie FeatureCollection, extrait les champs de la première feature + nombre total
-- Dropdown "Quel champ devient le nom du noeud ?" alimenté par les champs détectés
-- Info "{N} features" en badge
+- **Play** (DataTable) → ouvre sur **Step 1** (parce qu'on doit recharger le fichier à chaque exécution — D11)
+- **Pencil** (DataTable) → ouvre sur **Step 1** (configuration source)
 
-**Footer** : le bouton "Lancer l'exécution" est dans le footer de la modale, à droite de "Sauvegarder & fermer", visible quel que soit l'onglet. Désactivé tant que fichier + champ nom + type cible ne sont pas renseignés.
+**Step 1 — fichier GeoJSON** :
+- Le bouton "Parcourir..." est un vrai file picker (`<input type="file">`) pour les sources GeoJSON
+- Au chargement : FileReader parse le JSON, vérifie FeatureCollection, extrait les champs depuis la première feature + nombre total
+- Indicateur "{N} features détectées" sous le sélecteur
+- Les `exposedFields` sont alimentés par les champs détectés (remplace les champs mockés du proto)
+- Le bouton "Tester la connexion" est masqué quand un fichier GeoJSON est chargé
+
+**Step 2 — Mapping** :
+- Section "Champ pour le nom du noeud" en haut : dropdown des champs détectés (obligatoire)
+- Table de mapping existante (proto) : alimentée par `exposedFields` + `getSchemaPropsForType(target_type)`
+- Sections matching attributaire/spatial et périmètre restent comme dans le proto (câblées J7)
+
+**Step 3** : non modifié
+
+**Footer commun** :
+- Bouton Précédent / Suivant pour naviguer
+- Bouton "Sauvegarder & fermer"
+- Bouton ▶ (icône Play, 36x36px) tout à droite. Visible si `format = 'GeoJSON'` ET `targetType` renseigné. Activé quand : fichier chargé + champ nom choisi + au moins un mapping de propriété défini. Post-J7 : sera aussi conditionné sur Step 3 patterns.
 
 **Pendant l'exécution** :
-- Bouton "Lancer" = "Exécution..." désactivé
-- À la fin : toast sonner (top-right), modale se ferme automatiquement
+- Bouton Play = spinner "..."
+- À la fin : toast sonner (top-right) avec résumé, modale se ferme automatiquement
 - Refetch stores sources + territoires
-
-**Pencil** : ouvre la même modale sur Step 1 (configuration source)
 
 ---
 

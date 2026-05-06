@@ -260,7 +260,7 @@ export default function App() {
       execFeatureCount: 0,
       execNomField: '',
     });
-    setSourceStepper({ sourceId, step: "mapping", mode: "edit" });
+    setSourceStepper({ sourceId, step: "source", mode: "edit" });
   };
 
   // ─── Exécution d'une source (mock) ──────────────────────────────────

@@ -190,38 +190,95 @@ export default function SourceStepper({
                         placeholder={endpointPlaceholder}
                         style={{ flex: 1, padding: "9px 12px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, outline: "none", boxSizing: "border-box", fontFamily: "monospace" }}
                       />
-                      <button
-                        onClick={() => {
-                          // PROVISOIRE : en vrai, ouvrirait un file picker natif
-                          // Pour les formats fichier, cette action remplacera / complétera l'URL par un chemin local
-                          const mockPaths = {
-                            CSV: "/home/jo/kdrive/rhiza/data/regbl_fr.csv",
-                            GeoJSON: "/home/jo/kdrive/rhiza/data/parcelles_fr.geojson",
-                            Shapefile: "/home/jo/kdrive/rhiza/data/batiments_fr.shp",
-                            GeoPackage: "/home/jo/kdrive/rhiza/data/swissboundaries3d.gpkg",
-                            INTERLIS: "/home/jo/kdrive/rhiza/data/mopublic_fr.xtf",
-                          };
-                          const path = mockPaths[stepperDraft.format] || "/home/jo/file";
-                          setStepperDraft({ ...stepperDraft, endpoint: path, availableLayers: [], selectedLayer: "", exposedFields: [], sourceOk: false });
-                        }}
-                        disabled={stepperDraft.format === "WFS"}
-                        title={stepperDraft.format === "WFS" ? "WFS est un service en ligne, pas un fichier" : "Choisir un fichier local"}
-                        style={{
-                          fontSize: 12, padding: "9px 14px", border: `1px solid ${C.border}`, borderRadius: 7,
-                          background: stepperDraft.format === "WFS" ? C.alt : C.surface,
-                          color: stepperDraft.format === "WFS" ? C.faint : C.muted,
-                          cursor: stepperDraft.format === "WFS" ? "default" : "pointer",
-                          fontFamily: F.body, flexShrink: 0,
-                        }}
-                      >Parcourir…</button>
+                      {stepperDraft.format === 'GeoJSON' ? (
+                        <>
+                          <input
+                            type="file"
+                            accept=".geojson,.json"
+                            id="geojson-file-input"
+                            style={{ display: 'none' }}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                try {
+                                  const json = JSON.parse(reader.result);
+                                  if (json.type !== 'FeatureCollection' || !Array.isArray(json.features)) {
+                                    toast.error('Le fichier doit être un GeoJSON FeatureCollection');
+                                    return;
+                                  }
+                                  const firstProps = json.features[0]?.properties || {};
+                                  const fields = Object.keys(firstProps).map(name => {
+                                    const val = firstProps[name];
+                                    const type = val === null ? 'string' : typeof val === 'number' ? (Number.isInteger(val) ? 'integer' : 'float') : typeof val;
+                                    return { name, type, example: String(val).slice(0, 40) };
+                                  });
+                                  // Ajouter geometry si présent
+                                  if (json.features[0]?.geometry) {
+                                    fields.push({ name: 'geometry', type: 'geometry', geomKind: json.features[0].geometry.type?.toLowerCase(), example: json.features[0].geometry.type });
+                                  }
+                                  setStepperDraft({
+                                    ...stepperDraft,
+                                    endpoint: file.name,
+                                    execFile: file,
+                                    execParsedFields: Object.keys(firstProps),
+                                    execFeatureCount: json.features.length,
+                                    execNomField: '',
+                                    exposedFields: fields,
+                                    selectedLayer: '(fichier)',
+                                    sourceOk: true,
+                                  });
+                                } catch {
+                                  toast.error('Fichier JSON invalide');
+                                }
+                              };
+                              reader.readAsText(file);
+                            }}
+                          />
+                          <button
+                            onClick={() => document.getElementById('geojson-file-input')?.click()}
+                            style={{
+                              fontSize: 12, padding: "9px 14px", border: `1px solid ${C.border}`, borderRadius: 7,
+                              background: C.surface, color: C.muted, cursor: "pointer",
+                              fontFamily: F.body, flexShrink: 0,
+                            }}
+                          >Parcourir…</button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            const mockPaths = {
+                              CSV: "/home/jo/kdrive/rhiza/data/regbl_fr.csv",
+                              Shapefile: "/home/jo/kdrive/rhiza/data/batiments_fr.shp",
+                              GeoPackage: "/home/jo/kdrive/rhiza/data/swissboundaries3d.gpkg",
+                              INTERLIS: "/home/jo/kdrive/rhiza/data/mopublic_fr.xtf",
+                            };
+                            const path = mockPaths[stepperDraft.format] || "/home/jo/file";
+                            setStepperDraft({ ...stepperDraft, endpoint: path, availableLayers: [], selectedLayer: "", exposedFields: [], sourceOk: false });
+                          }}
+                          disabled={stepperDraft.format === "WFS"}
+                          title={stepperDraft.format === "WFS" ? "WFS est un service en ligne, pas un fichier" : "Choisir un fichier local"}
+                          style={{
+                            fontSize: 12, padding: "9px 14px", border: `1px solid ${C.border}`, borderRadius: 7,
+                            background: stepperDraft.format === "WFS" ? C.alt : C.surface,
+                            color: stepperDraft.format === "WFS" ? C.faint : C.muted,
+                            cursor: stepperDraft.format === "WFS" ? "default" : "pointer",
+                            fontFamily: F.body, flexShrink: 0,
+                          }}
+                        >Parcourir…</button>
+                      )}
                     </div>
                     <div style={{ fontSize: 9, color: C.faint, marginTop: 4, fontStyle: "italic" }}>
-                      {multilayer
-                        ? `Saisir l'URL du service (racine). Rhiza appellera GetCapabilities pour découvrir les couches exposées.`
-                        : `Un fichier ${stepperDraft.format} = une couche. Saisir l'URL ou le chemin du fichier directement.`}
+                      {stepperDraft.format === 'GeoJSON' && stepperDraft.execFeatureCount > 0
+                        ? `${stepperDraft.execFeatureCount} features détectées`
+                        : multilayer
+                          ? `Saisir l'URL du service (racine). Rhiza appellera GetCapabilities pour découvrir les couches exposées.`
+                          : `Un fichier ${stepperDraft.format} = une couche. Saisir l'URL ou le chemin du fichier directement.`}
                     </div>
                   </div>
-                  <button
+                  {/* Bouton connexion — masqué pour GeoJSON quand fichier chargé */}
+                  {!(stepperDraft.format === 'GeoJSON' && stepperDraft.sourceOk) && <button
                     onClick={() => {
                       // PROVISOIRE : simule la découverte des couches (pour les multi-couches)
                       // ou directement l'inférence des champs (pour les mono-couches)
@@ -272,7 +329,7 @@ export default function SourceStepper({
                       cursor: stepperDraft.endpoint.trim() && stepperDraft.nom.trim() ? "pointer" : "default",
                       fontWeight: 600, fontFamily: F.body,
                     }}
-                  >{multilayer ? "Découvrir les couches" : "Tester la connexion"}</button>
+                  >{multilayer ? "Découvrir les couches" : "Tester la connexion"}</button>}
                 </div>
 
                 {/* ═ Sous-section 2 : Choix de couche (multi-couches uniquement) ═ */}
@@ -419,74 +476,27 @@ export default function SourceStepper({
                   : "spatial")
               : null;
 
-            // J8b : handler fichier GeoJSON
-            const handleExecFile = (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              const reader = new FileReader();
-              reader.onload = () => {
-                try {
-                  const json = JSON.parse(reader.result);
-                  if (json.type !== 'FeatureCollection' || !Array.isArray(json.features)) {
-                    toast.error('Le fichier doit être un GeoJSON FeatureCollection');
-                    return;
-                  }
-                  const firstProps = json.features[0]?.properties || {};
-                  const fields = Object.keys(firstProps);
-                  setStepperDraft({
-                    ...stepperDraft,
-                    execFile: file,
-                    execParsedFields: fields,
-                    execFeatureCount: json.features.length,
-                    execNomField: '',
-                  });
-                } catch {
-                  toast.error('Fichier JSON invalide');
-                }
-              };
-              reader.readAsText(file);
-            };
-
-            const execReady = stepperDraft.execFile && stepperDraft.execNomField && stepperDraft.targetType;
-
             return (
               <div>
-                {/* ═ Sous-section 0 : Fichier GeoJSON (J8b) ═ */}
-                {stepperDraft.format === 'GeoJSON' && (
-                  <div style={{ background: C.alt, border: `1px solid ${stepperDraft.execFile ? C.accent : C.blight}`, borderRadius: 8, padding: "14px 16px", marginBottom: 14 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint }}>
-                        Fichier GeoJSON
-                      </div>
-                      {stepperDraft.execFile && (
-                        <div style={{ fontSize: 10, color: C.accent, fontWeight: 600 }}>
-                          {stepperDraft.execFeatureCount} features
-                        </div>
-                      )}
+                {/* ═ Sous-section 0 : Champ nom (J8b) — visible si fichier GeoJSON chargé ═ */}
+                {stepperDraft.format === 'GeoJSON' && stepperDraft.execParsedFields?.length > 0 && (
+                  <div style={{ background: C.alt, border: `1px solid ${stepperDraft.execNomField ? C.accent : C.blight}`, borderRadius: 8, padding: "14px 16px", marginBottom: 14 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint, marginBottom: 8 }}>
+                      Champ pour le nom du noeud <span style={{ color: C.error }}>*</span>
                     </div>
-                    <input
-                      type="file"
-                      accept=".geojson,.json"
-                      onChange={handleExecFile}
-                      style={{ fontSize: 12, marginBottom: stepperDraft.execParsedFields.length > 0 ? 12 : 0 }}
-                    />
-                    {stepperDraft.execParsedFields.length > 0 && (
-                      <div>
-                        <label style={{ fontSize: 11, fontWeight: 600, color: C.muted, display: "block", marginBottom: 6 }}>
-                          Quel champ devient le nom du noeud ? <span style={{ color: C.error }}>*</span>
-                        </label>
-                        <select
-                          value={stepperDraft.execNomField}
-                          onChange={e => setStepperDraft({ ...stepperDraft, execNomField: e.target.value })}
-                          style={{ width: "100%", padding: "8px 12px", fontSize: 12, border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box", fontFamily: F.body, background: C.surface }}
-                        >
-                          <option value="">— Choisir —</option>
-                          {stepperDraft.execParsedFields.map(f => (
-                            <option key={f} value={f}>{f}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
+                    <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>
+                      Quel champ du GeoJSON devient le nom de chaque noeud créé ?
+                    </div>
+                    <select
+                      value={stepperDraft.execNomField || ''}
+                      onChange={e => setStepperDraft({ ...stepperDraft, execNomField: e.target.value })}
+                      style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, outline: "none", boxSizing: "border-box", fontFamily: F.body, background: C.surface }}
+                    >
+                      <option value="">— Choisir —</option>
+                      {stepperDraft.execParsedFields.map(f => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
+                    </select>
                   </div>
                 )}
 
@@ -1773,13 +1783,14 @@ export default function SourceStepper({
                     cursor: "pointer", fontFamily: F.body, fontWeight: isLastStep && canValidateNow ? 600 : 500, flexShrink: 0,
                   }}
                 >Sauvegarder & fermer</button>
-                {/* J8b : Lancer l'exécution — visible si format GeoJSON + target_type */}
+                {/* J8b : Bouton Play — visible si format GeoJSON + target_type */}
                 {stepperDraft.format === 'GeoJSON' && stepperDraft.targetType && (() => {
-                  const canExec = stepperDraft.execFile && stepperDraft.execNomField;
+                  const canExec = stepperDraft.execFile && stepperDraft.execNomField && stepperDraft.fieldMappings?.some(m => m.sourceField && m.targetProp);
                   const isRunning = stepperDraft._executing;
                   return (
                     <button
                       disabled={!canExec || isRunning}
+                      title={!canExec ? "Fichier + champ nom + au moins un mapping requis" : "Lancer l'exécution"}
                       onClick={async () => {
                         if (!canExec || isRunning) return;
                         setStepperDraft(d => ({ ...d, _executing: true }));
@@ -1806,13 +1817,14 @@ export default function SourceStepper({
                         }
                       }}
                       style={{
-                        fontSize: 12, padding: "8px 20px", border: "none", borderRadius: 7,
+                        width: 36, height: 36, border: "none", borderRadius: 7,
                         background: canExec && !isRunning ? C.accent : C.border,
                         color: canExec && !isRunning ? "#fff" : C.faint,
                         cursor: canExec && !isRunning ? "pointer" : "default",
-                        fontWeight: 600, fontFamily: F.body, flexShrink: 0,
+                        display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        flexShrink: 0,
                       }}
-                    >{isRunning ? "Exécution..." : "Lancer l'exécution"}</button>
+                    >{isRunning ? <span style={{ fontSize: 11 }}>...</span> : <Icon name="play" size={14} color={canExec ? "#fff" : C.faint} />}</button>
                   );
                 })()}
               </div>
