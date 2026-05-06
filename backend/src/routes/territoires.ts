@@ -8,6 +8,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import sql from '../db/postgres.js';
 import { runCypher } from '../db/neo4j.js';
+import { auditMetier } from '../audit.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -189,6 +190,7 @@ const territoiresRoutes: FastifyPluginAsync = async (fastify) => {
   // Si Neo4j échoue, compensation DELETE Postgres.
 
   fastify.post('/', async (request, reply) => {
+    const start = Date.now();
     const body = request.body as {
       nom?: string;
       subtype?: string;
@@ -310,10 +312,16 @@ const territoiresRoutes: FastifyPluginAsync = async (fastify) => {
     } catch (err) {
       // Compensation : supprimer ce qui a été créé dans Postgres
       fastify.log.error({ module: 'territoires', err, uuid }, 'neo4j creation failed, compensating postgres');
+      await auditMetier('INSERT', 'territoires', uuid, null, null, 'api');
       await sql`DELETE FROM metier.properties WHERE node_uuid = ${uuid}`;
       await sql`DELETE FROM metier.territoires WHERE uuid = ${uuid}`;
       throw err;
     }
+
+    // Succès — log structuré + audit métier
+    const created = { nom, subtype, properties: body.properties ?? null, parent_uuid: body.parent_uuid ?? null };
+    fastify.log.info({ module: 'territoires', action: 'INSERT', resource_uuid: uuid, request_id: request.id, duration_ms: Date.now() - start }, 'territoire created');
+    await auditMetier('INSERT', 'territoires', uuid, null, created, 'api');
 
     reply.code(201);
     return { uuid, nom, subtype };

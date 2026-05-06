@@ -1,9 +1,11 @@
 import crypto from 'node:crypto';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import { config } from './config.js';
 import { migrate } from './db/migrate.js';
 import requestLogger from './plugins/request-logger.js';
+import logBufferPlugin from './plugins/log-buffer.js';
 import jwtPlugin from './plugins/jwt.js';
 import driver from './db/neo4j.js';
 import healthRoutes from './routes/health.js';
@@ -11,6 +13,7 @@ import authRoutes from './routes/auth.js';
 import territoiresRoutes from './routes/territoires.js';
 import schemaRoutes from './routes/schema.js';
 import sourcesRoutes from './routes/sources.js';
+import logsRoutes from './routes/logs.js';
 
 const fastify = Fastify({
   logger: {
@@ -28,7 +31,9 @@ await fastify.register(cors, {
   origin: config.FRONTEND_ORIGIN,
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 });
+await fastify.register(rateLimit, { max: 120, timeWindow: '1 minute' });
 await fastify.register(requestLogger);
+await fastify.register(logBufferPlugin);
 await fastify.register(jwtPlugin);
 
 // Routes
@@ -37,6 +42,7 @@ await fastify.register(authRoutes, { prefix: '/auth' });
 await fastify.register(territoiresRoutes, { prefix: '/territoires' });
 await fastify.register(schemaRoutes, { prefix: '/schema' });
 await fastify.register(sourcesRoutes, { prefix: '/sources' });
+await fastify.register(logsRoutes, { prefix: '/logs' });
 
 // Connexions aux bases au démarrage
 try {

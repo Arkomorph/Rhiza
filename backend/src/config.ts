@@ -24,6 +24,10 @@ const envSchema = z.object({
 
   // CORS
   FRONTEND_ORIGIN: z.string().default('http://localhost:5173'),
+
+  // Logs endpoint
+  LOGS_TOKEN: z.string().min(16).default('dev-logs-token-change-me!!'),
+  LOGS_BUFFER_SIZE: z.coerce.number().default(1000),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -71,6 +71,8 @@ services:
       PG_DB: ${PG_DB:-rhiza}
       PG_USER: ${PG_USER:-rhiza}
       PG_PASSWORD: ${PG_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      LOGS_TOKEN: ${LOGS_TOKEN}
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/health || exit 1"]
       interval: 30s
