@@ -81,36 +81,24 @@ Au-dessus de la table : compteur résultats à gauche, bouton "↻ Synchro patte
 | `format != 'GeoJSON'` | Désactivé, tooltip "Format non supporté Sprint 2" |
 | Exécution en cours sur cette source | Spinner "..." |
 
-### Mini-modale "Exécuter"
+### Workflow exécution
 
-Au clic Play, ouverture d'une modale 620px :
+Le Play ouvre le **SourceStepper** (même modale que Pencil) positionné sur **Step 2 (Mapping)**. Pas de mini-modale séparée. Une seule modale unifiée pour configuration ET exécution.
 
-**Contenu** :
+**Step 2 — section fichier GeoJSON** (en haut, avant le type cible) :
 - Input file (accept `.geojson`, `.json`)
-- Champ obligatoire "Champ source pour le nom" (input texte)
-- Tableau "Propriétés supplémentaires" à deux colonnes :
-  - Source (input texte libre)
-  - Cible (dropdown alimenté par `getSchemaPropsForType(target_type)`)
-- Bouton "+ Ajouter un mapping"
-- Bouton "Annuler" + "Lancer l'exécution"
+- Au chargement : FileReader parse le JSON, vérifie FeatureCollection, extrait les champs de la première feature + nombre total
+- Dropdown "Quel champ devient le nom du noeud ?" alimenté par les champs détectés
+- Info "{N} features" en badge
+
+**Footer** : le bouton "Lancer l'exécution" est dans le footer de la modale, à droite de "Sauvegarder & fermer", visible quel que soit l'onglet. Désactivé tant que fichier + champ nom + type cible ne sont pas renseignés.
 
 **Pendant l'exécution** :
-- Bouton "Lancer" désactivé avec texte "Exécution en cours..."
-- Bouton Play sur la ligne = spinner
-- Fermeture de la modale : confirm "Une exécution est en cours..."
-
-**Résultat** :
-- Toast sonner (top-right) avec résumé
-- Si erreurs > 0 : toast warning avec lien "Voir le détail" → modale erreurs
+- Bouton "Lancer" = "Exécution..." désactivé
+- À la fin : toast sonner (top-right), modale se ferme automatiquement
 - Refetch stores sources + territoires
 
----
-
-## Modale détail erreurs
-
-Liste scrollable des erreurs d'exécution :
-- Feature index (bold rouge) + reason (texte)
-- Fermeture par X ou overlay
+**Pencil** : ouvre la même modale sur Step 1 (configuration source)
 
 ---
 

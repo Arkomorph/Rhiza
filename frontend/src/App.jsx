@@ -179,6 +179,8 @@ export default function App() {
       patterns: [],                      // [{ id, mode, edgeType, direction, otherNodeType, ... }]
       noPatterns: false,                 // "Aucun pattern — source autoportante" coché
       patternsOk: false,
+      // J8b
+      execFile: null, execParsedFields: [], execFeatureCount: 0, execNomField: '',
     });
     setSourceStepper({ sourceId: sourceNextId, step: "source", mode: "create" });
   };
@@ -214,8 +216,51 @@ export default function App() {
       patterns: cfg.patterns || [],
       noPatterns: !!cfg.noPatterns,
       patternsOk: !!cfg.patternsOk,
+      // J8b
+      execFile: null, execParsedFields: [], execFeatureCount: 0, execNomField: '',
     });
     setSourceStepper({ sourceId, step: "source", mode: "edit" });
+  };
+
+  // ─── Ouverture stepper sur Step 2 pour exécution (J8b) ─────────────
+  const openSourceStepperExecute = (sourceId) => {
+    const source = sourcesStore.sources.find(s => s.id === sourceId);
+    if (!source) return;
+    const cfg = sourceConfig[sourceId] || {};
+    setStepperDraft({
+      id: sourceId,
+      nom: source.nom,
+      format: source.format,
+      portail: source.portail,
+      endpoint: cfg.endpoint || "",
+      availableLayers: cfg.availableLayers || [],
+      selectedLayer: cfg.selectedLayer || "",
+      exposedFields: cfg.exposedFields || [],
+      sourceOk: true,
+      targetType: source.target_type || cfg.targetType || "",
+      fieldMappings: cfg.fieldMappings || [],
+      matchAttrEnabled: !!cfg.matchAttrEnabled,
+      matchingField: cfg.matchingField || "",
+      matchingKey: cfg.matchingKey || "",
+      matchSpatialEnabled: !!cfg.matchSpatialEnabled,
+      matchingGeomField: cfg.matchingGeomField || "",
+      matchingTargetGeomProp: cfg.matchingTargetGeomProp || "",
+      matchingSpatialMethod: cfg.matchingSpatialMethod || "",
+      matchingSpatialTolerance: cfg.matchingSpatialTolerance ?? 2,
+      matchingPriority: cfg.matchingPriority || "attr_first",
+      matchingScope: cfg.matchingScope || [],
+      mappingOk: !!cfg.mappingOk,
+      customProps: cfg.customProps || [],
+      patterns: cfg.patterns || [],
+      noPatterns: !!cfg.noPatterns,
+      patternsOk: !!cfg.patternsOk,
+      // J8b : fichier GeoJSON pour exécution
+      execFile: null,
+      execParsedFields: [],
+      execFeatureCount: 0,
+      execNomField: '',
+    });
+    setSourceStepper({ sourceId, step: "mapping", mode: "edit" });
   };
 
   // ─── Exécution d'une source (mock) ──────────────────────────────────
@@ -493,6 +538,7 @@ export default function App() {
         <DonneesPage
           openSourceStepperCreate={openSourceStepperCreate}
           openSourceStepperEdit={openSourceStepperEdit}
+          openSourceStepperExecute={openSourceStepperExecute}
         />
       )}
 

@@ -7,8 +7,10 @@ import { SPATIAL_OPS, compatibleSpatialOps } from '../data/edge-types.js';
 import { lighten, colorForOntologyPath } from '../helpers/colors.js';
 import { getEffectiveExpectations } from '../helpers/ontology.js';
 import { TYPE_FAMILY, compatibleEdges } from '../helpers/spatial.js';
+import { toast } from 'sonner';
 import useSchemaStore from '../stores/useSchemaStore.js';
 import useSourcesStore from '../stores/useSourcesStore.js';
+import useTerritoiresStore from '../stores/useTerritoiresStore.js';
 import { isPatternCompleteHelper, firstMissingHintHelper, getStepMissing } from '../helpers/patterns.js';
 import Icon from './Icon.jsx';
 import DataTable from './DataTable.jsx';
@@ -417,8 +419,77 @@ export default function SourceStepper({
                   : "spatial")
               : null;
 
+            // J8b : handler fichier GeoJSON
+            const handleExecFile = (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => {
+                try {
+                  const json = JSON.parse(reader.result);
+                  if (json.type !== 'FeatureCollection' || !Array.isArray(json.features)) {
+                    toast.error('Le fichier doit être un GeoJSON FeatureCollection');
+                    return;
+                  }
+                  const firstProps = json.features[0]?.properties || {};
+                  const fields = Object.keys(firstProps);
+                  setStepperDraft({
+                    ...stepperDraft,
+                    execFile: file,
+                    execParsedFields: fields,
+                    execFeatureCount: json.features.length,
+                    execNomField: '',
+                  });
+                } catch {
+                  toast.error('Fichier JSON invalide');
+                }
+              };
+              reader.readAsText(file);
+            };
+
+            const execReady = stepperDraft.execFile && stepperDraft.execNomField && stepperDraft.targetType;
+
             return (
               <div>
+                {/* ═ Sous-section 0 : Fichier GeoJSON (J8b) ═ */}
+                {stepperDraft.format === 'GeoJSON' && (
+                  <div style={{ background: C.alt, border: `1px solid ${stepperDraft.execFile ? C.accent : C.blight}`, borderRadius: 8, padding: "14px 16px", marginBottom: 14 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint }}>
+                        Fichier GeoJSON
+                      </div>
+                      {stepperDraft.execFile && (
+                        <div style={{ fontSize: 10, color: C.accent, fontWeight: 600 }}>
+                          {stepperDraft.execFeatureCount} features
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      accept=".geojson,.json"
+                      onChange={handleExecFile}
+                      style={{ fontSize: 12, marginBottom: stepperDraft.execParsedFields.length > 0 ? 12 : 0 }}
+                    />
+                    {stepperDraft.execParsedFields.length > 0 && (
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 600, color: C.muted, display: "block", marginBottom: 6 }}>
+                          Quel champ devient le nom du noeud ? <span style={{ color: C.error }}>*</span>
+                        </label>
+                        <select
+                          value={stepperDraft.execNomField}
+                          onChange={e => setStepperDraft({ ...stepperDraft, execNomField: e.target.value })}
+                          style={{ width: "100%", padding: "8px 12px", fontSize: 12, border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box", fontFamily: F.body, background: C.surface }}
+                        >
+                          <option value="">— Choisir —</option>
+                          {stepperDraft.execParsedFields.map(f => (
+                            <option key={f} value={f}>{f}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* ═ Sous-section 1 : Type cible ═ */}
                 <div style={{ background: C.alt, border: `1px solid ${stepperDraft.targetType ? C.accent : C.blight}`, borderRadius: 8, padding: "14px 16px", marginBottom: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -1702,6 +1773,48 @@ export default function SourceStepper({
                     cursor: "pointer", fontFamily: F.body, fontWeight: isLastStep && canValidateNow ? 600 : 500, flexShrink: 0,
                   }}
                 >Sauvegarder & fermer</button>
+                {/* J8b : Lancer l'exécution — visible si format GeoJSON + target_type */}
+                {stepperDraft.format === 'GeoJSON' && stepperDraft.targetType && (() => {
+                  const canExec = stepperDraft.execFile && stepperDraft.execNomField;
+                  const isRunning = stepperDraft._executing;
+                  return (
+                    <button
+                      disabled={!canExec || isRunning}
+                      onClick={async () => {
+                        if (!canExec || isRunning) return;
+                        setStepperDraft(d => ({ ...d, _executing: true }));
+                        try {
+                          const { executeSource } = useSourcesStore.getState();
+                          const mapping = {
+                            nom_field: stepperDraft.execNomField,
+                            properties: (stepperDraft.fieldMappings || [])
+                              .filter(m => m.sourceField && m.targetProp)
+                              .map(m => ({ source: m.sourceField, target: m.targetProp })),
+                          };
+                          const result = await executeSource(stepperDraft.id, stepperDraft.execFile, mapping);
+                          useTerritoiresStore.getState().fetchAll();
+                          setStepperDraft(null);
+                          setSourceStepper(null);
+                          if (result.failed > 0) {
+                            toast.warning(result.summary, { duration: 8000 });
+                          } else {
+                            toast.success(result.summary);
+                          }
+                        } catch (err) {
+                          setStepperDraft(d => ({ ...d, _executing: false }));
+                          toast.error(`Erreur : ${err.message}`);
+                        }
+                      }}
+                      style={{
+                        fontSize: 12, padding: "8px 20px", border: "none", borderRadius: 7,
+                        background: canExec && !isRunning ? C.accent : C.border,
+                        color: canExec && !isRunning ? "#fff" : C.faint,
+                        cursor: canExec && !isRunning ? "pointer" : "default",
+                        fontWeight: 600, fontFamily: F.body, flexShrink: 0,
+                      }}
+                    >{isRunning ? "Exécution..." : "Lancer l'exécution"}</button>
+                  );
+                })()}
               </div>
             </div>
           );
