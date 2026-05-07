@@ -21,7 +21,7 @@ const STATUT_STYLE = {
 };
 
 export default function DonneesPage({
-  openSourceStepperCreate, openSourceStepperEdit, openSourceStepperExecute,
+  openSourceStepperCreate, openSourceStepperEdit,
 }) {
   const sourcesStore = useSourcesStore();
   const { sources, loading, error, sourcesByTargetType, sourcesUncategorized } = sourcesStore;
@@ -130,23 +130,14 @@ export default function DonneesPage({
       );
     }},
     { key: "_actions", label: "", width: "90px", render: row => {
-      const canExecute = row.target_type && row.format === 'GeoJSON' && !row.archived_at;
-      const execTooltip = !row.target_type ? "Configurez d'abord le type cible" : row.format !== 'GeoJSON' ? "Format non supporté Sprint 2" : "Exécuter";
       return (
         <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
           <span
-            onClick={() => canExecute && openSourceStepperExecute(row.id)}
-            style={{ opacity: canExecute ? 1 : 0.3, cursor: canExecute ? "pointer" : "not-allowed" }}
-            title={execTooltip}
-          >
-            <Icon name="play" size={12} color={canExecute ? C.accent : C.faint} />
-          </span>
-          <span
             onClick={() => !row.archived_at && openSourceStepperEdit(row.id)}
-            style={{ opacity: row.archived_at ? 0.3 : 0.6, cursor: row.archived_at ? "not-allowed" : "pointer" }}
-            title="Configurer la source"
+            style={{ opacity: row.archived_at ? 0.3 : 1, cursor: row.archived_at ? "not-allowed" : "pointer" }}
+            title={row.archived_at ? "Source archivée" : "Configurer / exécuter"}
           >
-            <Icon name="pencil" size={12} color={C.muted} />
+            <Icon name="pencil" size={12} color={row.archived_at ? C.faint : C.accent} />
           </span>
           {!row.archived_at && (
             <span

@@ -236,6 +236,11 @@ export default function SourceStepper({
                               reader.readAsText(file);
                             }}
                           />
+                          {stepperDraft.lastFilePath && !stepperDraft.execFile && (
+                            <span style={{ fontSize: 10, color: C.faint, fontStyle: "italic", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+                              {stepperDraft.lastFilePath}
+                            </span>
+                          )}
                           <button
                             onClick={() => document.getElementById('geojson-file-input')?.click()}
                             style={{
@@ -243,7 +248,7 @@ export default function SourceStepper({
                               background: C.surface, color: C.muted, cursor: "pointer",
                               fontFamily: F.body, flexShrink: 0,
                             }}
-                          >Parcourir…</button>
+                          >{stepperDraft.execFile ? stepperDraft.execFile.name : 'Parcourir…'}</button>
                         </>
                       ) : (
                         <button
@@ -1699,16 +1704,20 @@ export default function SourceStepper({
             setStepperDraft(next);
             setSourceStepper({ ...sourceStepper, step: steps[currentIdx + 1].key });
           };
-          // Sauvegarder : persiste via POST /sources si création, sinon sauvegarde locale.
+          // Sauvegarder : persiste via POST (création) ou PATCH (édition) + config locale.
           const saveAndClose = async () => {
             const draftToSave = { ...stepperDraft };
             if (canValidateNow) {
               if (currentStepKey === "mapping") draftToSave.mappingOk = true;
               if (currentStepKey === "patterns") draftToSave.patternsOk = true;
             }
-            // Persistance en base si création (J8a Step 1)
-            if (sourceStepper.mode === 'create' && draftToSave.nom?.trim()) {
-              try {
+            // Mémoriser le chemin du dernier fichier utilisé
+            if (draftToSave.execFile) {
+              draftToSave.lastFilePath = draftToSave.execFile.name;
+            }
+            try {
+              if (sourceStepper.mode === 'create' && draftToSave.nom?.trim()) {
+                // Création
                 await addSource({
                   id: draftToSave.id || nextId,
                   nom: draftToSave.nom.trim(),
@@ -1716,13 +1725,22 @@ export default function SourceStepper({
                   portail: draftToSave.portail || null,
                   target_type: draftToSave.targetType || null,
                 });
-              } catch (err) {
-                console.error('[stepper] POST /sources failed', err);
-                alert(`Erreur : ${err.message}`);
-                return; // Ne pas fermer si erreur
+              } else if (sourceStepper.mode === 'edit') {
+                // Édition — PATCH les champs source modifiés
+                const { updateSource } = useSourcesStore.getState();
+                await updateSource(draftToSave.id, {
+                  nom: draftToSave.nom?.trim() || undefined,
+                  format: draftToSave.format || undefined,
+                  portail: draftToSave.portail || null,
+                  target_type: draftToSave.targetType || null,
+                });
               }
+            } catch (err) {
+              console.error('[stepper] save failed', err);
+              alert(`Erreur : ${err.message}`);
+              return;
             }
-            // Config locale (Steps 2-3 restent en draft)
+            // Config locale (mapping, patterns, fichier, tout le draft)
             setSourceConfig(prev => ({ ...prev, [draftToSave.id]: draftToSave }));
             setSourceStepper(null);
             setStepperDraft(null);

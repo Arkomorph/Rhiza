@@ -186,20 +186,23 @@ export default function App() {
   };
 
   const openSourceStepperEdit = (sourceId) => {
-    const source = [...CATALOG, ...customSources].find(s => s.id === sourceId);
+    // Chercher dans les sources API (réelles) puis fallback CATALOG/custom
+    const source = sourcesStore.sources.find(s => s.id === sourceId)
+      || [...CATALOG, ...customSources].find(s => s.id === sourceId);
     if (!source) return;
     const cfg = sourceConfig[sourceId] || {};
     setStepperDraft({
       id: sourceId,
       nom: source.nom,
       format: source.format,
-      portail: source.portail,
+      portail: source.portail || '',
       endpoint: cfg.endpoint || "",
+      lastFilePath: cfg.lastFilePath || "",
       availableLayers: cfg.availableLayers || [],
       selectedLayer: cfg.selectedLayer || "",
       exposedFields: cfg.exposedFields || [],
-      sourceOk: !!cfg.sourceOk,
-      targetType: cfg.targetType || "",
+      sourceOk: !!cfg.sourceOk || !!(source.target_type),
+      targetType: source.target_type || cfg.targetType || "",
       fieldMappings: cfg.fieldMappings || [],
       matchAttrEnabled: !!cfg.matchAttrEnabled,
       matchingField: cfg.matchingField || "",
@@ -217,7 +220,7 @@ export default function App() {
       noPatterns: !!cfg.noPatterns,
       patternsOk: !!cfg.patternsOk,
       // J8b
-      execFile: null, execParsedFields: [], execFeatureCount: 0, execNomField: '',
+      execFile: null, execParsedFields: cfg.execParsedFields || [], execFeatureCount: cfg.execFeatureCount || 0, execNomField: cfg.execNomField || '',
     });
     setSourceStepper({ sourceId, step: "source", mode: "edit" });
   };
@@ -233,6 +236,7 @@ export default function App() {
       format: source.format,
       portail: source.portail,
       endpoint: cfg.endpoint || "",
+      lastFilePath: cfg.lastFilePath || "",
       availableLayers: cfg.availableLayers || [],
       selectedLayer: cfg.selectedLayer || "",
       exposedFields: cfg.exposedFields || [],
@@ -254,11 +258,11 @@ export default function App() {
       patterns: cfg.patterns || [],
       noPatterns: !!cfg.noPatterns,
       patternsOk: !!cfg.patternsOk,
-      // J8b : fichier GeoJSON pour exécution
+      // J8b : fichier à recharger, mais on conserve les métadonnées
       execFile: null,
-      execParsedFields: [],
-      execFeatureCount: 0,
-      execNomField: '',
+      execParsedFields: cfg.execParsedFields || [],
+      execFeatureCount: cfg.execFeatureCount || 0,
+      execNomField: cfg.execNomField || '',
     });
     setSourceStepper({ sourceId, step: "source", mode: "edit" });
   };
@@ -538,7 +542,6 @@ export default function App() {
         <DonneesPage
           openSourceStepperCreate={openSourceStepperCreate}
           openSourceStepperEdit={openSourceStepperEdit}
-          openSourceStepperExecute={openSourceStepperExecute}
         />
       )}
 
