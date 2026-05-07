@@ -1768,8 +1768,8 @@ export default function SourceStepper({
                     cursor: "pointer", fontFamily: F.body, fontWeight: isLastStep && canValidateNow ? 600 : 500, flexShrink: 0,
                   }}
                 >Sauvegarder & fermer</button>
-                {/* J8b : Bouton Play — visible si format GeoJSON + target_type */}
-                {stepperDraft.format === 'GeoJSON' && stepperDraft.targetType && (() => {
+                {/* J8b : Bouton Play — visible si edit + format GeoJSON + target_type */}
+                {sourceStepper.mode === 'edit' && stepperDraft.format === 'GeoJSON' && stepperDraft.targetType && (() => {
                   const canExec = stepperDraft.execFile && stepperDraft.execNomField && stepperDraft.fieldMappings?.some(m => m.sourceField && m.targetProp);
                   const isRunning = stepperDraft._executing;
                   return (
@@ -1778,6 +1778,7 @@ export default function SourceStepper({
                       title={!canExec ? "Fichier + champ nom + au moins un mapping requis" : "Lancer l'exécution"}
                       onClick={async () => {
                         if (!canExec || isRunning) return;
+                        console.log('[execute] sourceId:', stepperDraft.id, 'file:', stepperDraft.execFile?.name, 'nomField:', stepperDraft.execNomField);
                         setStepperDraft(d => ({ ...d, _executing: true }));
                         try {
                           const { executeSource } = useSourcesStore.getState();
