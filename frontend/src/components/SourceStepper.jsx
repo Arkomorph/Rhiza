@@ -500,53 +500,14 @@ export default function SourceStepper({
                   </div>
                 )}
 
-                {/* ═ Sous-section 1 : Type cible ═ */}
-                <div style={{ background: C.alt, border: `1px solid ${stepperDraft.targetType ? C.accent : C.blight}`, borderRadius: 8, padding: "14px 16px", marginBottom: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint }}>
-                      1 · Type de nœud cible
-                    </div>
-                    {stepperDraft.targetType && (
-                      <div style={{ fontSize: 10, color: C.accent, fontWeight: 600 }}>
-                        ✓ {stepperDraft.targetType}
-                      </div>
-                    )}
+                {/* ═ Rappel type cible (lecture seule — défini en Step 1) ═ */}
+                {stepperDraft.targetType && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, padding: "8px 12px", background: C.alt, borderRadius: 6, border: `1px solid ${C.accent}` }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: C.faint }}>Type cible :</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: C.accent }}>{stepperDraft.targetType}</span>
+                    {naturalKey && <span style={{ fontSize: 10, color: C.muted, fontStyle: "italic" }}>· clé naturelle : {naturalKey.key}</span>}
                   </div>
-                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>
-                    Quel type de nœud cette source alimente ? Conditionne les propriétés disponibles et la clé naturelle.
-                  </div>
-                  <select
-                    value={stepperDraft.targetType}
-                    onChange={e => {
-                      const naturalKeyValue = (getSchemaPropsForType(e.target.value)).find(p => p.natural_key)?.key || "";
-                      setStepperDraft({
-                        ...stepperDraft,
-                        targetType: e.target.value,
-                        matchingKey: naturalKeyValue, // pré-sélectionne la clé naturelle
-                        fieldMappings: [],
-                        mappingOk: false,
-                        matchingScope: [], // reset périmètre si type change
-                      });
-                    }}
-                    style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, outline: "none", boxSizing: "border-box", fontFamily: F.body, background: C.surface }}
-                  >
-                    <option value="">— Choisir un type —</option>
-                    {ontologyTypesGrouped.map(g => (
-                      <optgroup key={g.label} label={g.label}>
-                        {g.types.map(t => (
-                          <option key={t.key} value={t.key}>
-                            {"\u00A0\u00A0".repeat(t.depth)}{t.depth > 0 ? "└ " : ""}{t.label}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                  {stepperDraft.targetType && naturalKey && (
-                    <div style={{ fontSize: 10, color: C.muted, marginTop: 8, fontStyle: "italic" }}>
-                      Clé naturelle de ce type : <span style={{ fontFamily: "monospace", color: C.text }}>{naturalKey.key}</span>
-                    </div>
-                  )}
-                </div>
+                )}
 
                 {/* ═ Sous-section 2 : Mapping des propriétés ═ */}
                 {stepperDraft.targetType && (() => {
@@ -884,11 +845,34 @@ export default function SourceStepper({
                           <div style={{ fontSize: 10, color: C.faint, fontStyle: "italic", textAlign: "center", padding: "10px 0" }}>
                             Aucun nœud contenant disponible dans le graphe. Matching global par défaut.
                           </div>
-                        ) : (
+                        ) : (() => {
+                          // Trier par hiérarchie ContenuDans (DFS depuis les racines)
+                          const byId = Object.fromEntries(scopeEligibleNodes.map(n => [n.id, n]));
+                          const childrenOf = {};
+                          const roots = [];
+                          for (const n of scopeEligibleNodes) {
+                            if (n.parentId && byId[n.parentId]) {
+                              (childrenOf[n.parentId] = childrenOf[n.parentId] || []).push(n);
+                            } else {
+                              roots.push(n);
+                            }
+                          }
+                          // Tri des racines et enfants par index canonique (D13)
+                          const sortByCanon = (a, b) => CANONICAL.indexOf(a.type) - CANONICAL.indexOf(b.type);
+                          roots.sort(sortByCanon);
+                          Object.values(childrenOf).forEach(arr => arr.sort(sortByCanon));
+                          // DFS pour produire la liste ordonnée avec profondeur
+                          const ordered = [];
+                          const dfs = (node, depth) => {
+                            ordered.push({ ...node, _depth: depth });
+                            for (const child of (childrenOf[node.id] || [])) dfs(child, depth + 1);
+                          };
+                          roots.forEach(r => dfs(r, 0));
+                          return (
                           <div style={{ maxHeight: 180, overflowY: "auto", paddingLeft: 2 }}>
-                            {scopeEligibleNodes.map(n => {
+                            {ordered.map(n => {
                               const checked = stepperDraft.matchingScope.includes(n.id);
-                              const depth = CANONICAL.indexOf(n.type);
+                              const depth = n._depth;
                               // Cascade : descendants éligibles (transitivement) à cocher/décocher avec le nœud
                               const collectDescendants = (rootId) => {
                                 const out = [];
@@ -934,7 +918,8 @@ export default function SourceStepper({
                               );
                             })}
                           </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
