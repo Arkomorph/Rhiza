@@ -30,7 +30,14 @@ async function requestLoggerPlugin(fastify: FastifyInstance) {
       url: redactUrl(request.url),
       statusCode: reply.statusCode,
       durationMs: Math.round(durationMs * 100) / 100,
+      ...(request.routeNotFound ? { routeNotFound: true } : {}),
     }, 'request completed');
+  });
+
+  // Routes non enregistrées → marquer pour filtrage ring buffer
+  fastify.setNotFoundHandler(async (request, reply) => {
+    request.routeNotFound = true;
+    reply.code(404).send({ error: 'Not Found' });
   });
 
   fastify.setErrorHandler(async (error: { statusCode?: number; message: string; code?: string }, request, reply) => {
@@ -57,5 +64,6 @@ export default fp(requestLoggerPlugin, { name: 'request-logger' });
 declare module 'fastify' {
   interface FastifyRequest {
     startTime: bigint;
+    routeNotFound?: boolean;
   }
 }
