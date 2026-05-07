@@ -98,8 +98,13 @@ async function logBufferPlugin(fastify: FastifyInstance) {
     rawStream.write = (chunk: string): boolean => {
       try {
         const parsed = JSON.parse(chunk);
-        // Auto-exclusion : la route /logs ne se logue pas elle-même
-        if (parsed.url && typeof parsed.url === 'string' && parsed.url.startsWith('/logs')) return originalWrite(chunk);
+        // Auto-exclusions du ring buffer (les logs restent dans stdout Docker)
+        if (parsed.url && typeof parsed.url === 'string') {
+          // La route /logs ne se logue pas elle-même
+          if (parsed.url.startsWith('/logs')) return originalWrite(chunk);
+          // 404 sur routes inconnues = bruit de scanners (forensique dans stdout)
+          if (parsed.statusCode === 404 && !/^\/(sources|territoires|schema|auth|health)/.test(parsed.url)) return originalWrite(chunk);
+        }
         const level = LEVEL_MAP[parsed.level] ?? 'info';
         ringBuffer.push({
           timestamp: parsed.time ? new Date(parsed.time).toISOString() : new Date().toISOString(),
