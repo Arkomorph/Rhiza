@@ -236,19 +236,14 @@ export default function SourceStepper({
                               reader.readAsText(file);
                             }}
                           />
-                          {stepperDraft.lastFilePath && !stepperDraft.execFile && (
-                            <span style={{ fontSize: 10, color: C.faint, fontStyle: "italic", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-                              {stepperDraft.lastFilePath}
-                            </span>
-                          )}
                           <button
                             onClick={() => document.getElementById('geojson-file-input')?.click()}
                             style={{
-                              fontSize: 12, padding: "9px 14px", border: `1px solid ${C.border}`, borderRadius: 7,
-                              background: C.surface, color: C.muted, cursor: "pointer",
-                              fontFamily: F.body, flexShrink: 0,
+                              fontSize: 12, padding: "9px 14px", border: `1px solid ${stepperDraft.execFile ? C.accent : C.border}`, borderRadius: 7,
+                              background: C.surface, color: stepperDraft.execFile ? C.accent : C.muted, cursor: "pointer",
+                              fontFamily: F.body, flexShrink: 0, fontWeight: stepperDraft.execFile ? 600 : 400,
                             }}
-                          >{stepperDraft.execFile ? stepperDraft.execFile.name : 'Parcourir…'}</button>
+                          >{stepperDraft.execFile ? stepperDraft.execFile.name : (stepperDraft.lastFilePath ? `Re-charger ${stepperDraft.lastFilePath}` : 'Parcourir…')}</button>
                         </>
                       ) : (
                         <button
@@ -274,12 +269,14 @@ export default function SourceStepper({
                         >Parcourir…</button>
                       )}
                     </div>
-                    <div style={{ fontSize: 9, color: C.faint, marginTop: 4, fontStyle: "italic" }}>
-                      {stepperDraft.format === 'GeoJSON' && stepperDraft.execFeatureCount > 0
+                    <div style={{ fontSize: 9, color: stepperDraft.execFile ? C.accent : C.faint, marginTop: 4, fontStyle: "italic" }}>
+                      {stepperDraft.format === 'GeoJSON' && stepperDraft.execFile
                         ? `${stepperDraft.execFeatureCount} features détectées`
-                        : multilayer
-                          ? `Saisir l'URL du service (racine). Rhiza appellera GetCapabilities pour découvrir les couches exposées.`
-                          : `Un fichier ${stepperDraft.format} = une couche. Saisir l'URL ou le chemin du fichier directement.`}
+                        : stepperDraft.format === 'GeoJSON' && stepperDraft.lastFilePath
+                          ? `Fichier requis pour exécuter — re-chargez via "Parcourir"`
+                          : multilayer
+                            ? `Saisir l'URL du service (racine). Rhiza appellera GetCapabilities pour découvrir les couches exposées.`
+                            : `Un fichier ${stepperDraft.format} = une couche. Saisir l'URL ou le chemin du fichier directement.`}
                     </div>
                   </div>
                   {/* Bouton connexion — masqué pour GeoJSON quand fichier chargé */}
