@@ -201,14 +201,13 @@ const sourcesRoutes: FastifyPluginAsync = async (fastify) => {
       complet: data.complet ?? before.complet,
     };
 
-    const draftJson = draftConfig !== undefined ? JSON.stringify(draftConfig) : null;
+    const draftJson = draftConfig !== undefined ? JSON.stringify(draftConfig) : (before.draft_config ? JSON.stringify(before.draft_config) : '{}');
     await sql`
       UPDATE config.sources
       SET nom = ${after.nom}, format = ${after.format}, portail = ${after.portail},
           theme = ${after.theme}, status = ${after.status}, target_type = ${after.target_type},
           endpoint_url = ${after.endpoint_url}, endpoint_protocol = ${after.endpoint_protocol},
-          complet = ${after.complet}, updated_at = now()
-          ${draftConfig !== undefined ? sql`, draft_config = ${draftJson}::jsonb` : sql``}
+          complet = ${after.complet}, draft_config = ${draftJson}::jsonb, updated_at = now()
       WHERE id = ${id}
     `;
 
