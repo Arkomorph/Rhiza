@@ -178,7 +178,9 @@ const sourcesRoutes: FastifyPluginAsync = async (fastify) => {
     const [before] = await sql`SELECT * FROM config.sources WHERE id = ${id} AND archived_at IS NULL`;
     if (!before) { reply.code(404); return { error: 'Source non trouvée' }; }
 
-    const parsed = createSourceSchema.partial().omit({ id: true }).safeParse(request.body);
+    const rawBody = request.body as Record<string, unknown>;
+    const draftConfig = rawBody.draft_config !== undefined ? rawBody.draft_config : undefined;
+    const parsed = createSourceSchema.partial().omit({ id: true }).safeParse(rawBody);
     if (!parsed.success) { reply.code(400); return { error: parsed.error.format() }; }
     const data = parsed.data;
 
@@ -199,12 +201,14 @@ const sourcesRoutes: FastifyPluginAsync = async (fastify) => {
       complet: data.complet ?? before.complet,
     };
 
+    const draftJson = draftConfig !== undefined ? JSON.stringify(draftConfig) : null;
     await sql`
       UPDATE config.sources
       SET nom = ${after.nom}, format = ${after.format}, portail = ${after.portail},
           theme = ${after.theme}, status = ${after.status}, target_type = ${after.target_type},
           endpoint_url = ${after.endpoint_url}, endpoint_protocol = ${after.endpoint_protocol},
           complet = ${after.complet}, updated_at = now()
+          ${draftConfig !== undefined ? sql`, draft_config = ${draftJson}::jsonb` : sql``}
       WHERE id = ${id}
     `;
 

@@ -24,6 +24,13 @@ const SOURCE_TYPES = ["WFS", "GeoJSON", "CSV", "Shapefile", "GeoPackage", "INTER
 const MULTILAYER_FORMATS = ["WFS", "GeoPackage", "INTERLIS"];
 const isMultiLayer = (format) => MULTILAYER_FORMATS.includes(format);
 
+// Extraire un draft_config serializable (sans File, sans _executing)
+function toDraftConfig(draft) {
+  if (!draft) return {};
+  const { execFile, _executing, ...rest } = draft;
+  return rest;
+}
+
 export default function SourceStepper({
   sourceStepper, setSourceStepper,
   stepperDraft, setStepperDraft,
@@ -1734,6 +1741,7 @@ export default function SourceStepper({
                   format: draftToSave.format || undefined,
                   portail: draftToSave.portail || null,
                   target_type: draftToSave.targetType || null,
+                  draft_config: toDraftConfig(draftToSave),
                 });
               }
             } catch (err) {
@@ -1818,9 +1826,11 @@ export default function SourceStepper({
                           };
                           const result = await executeSource(stepperDraft.id, stepperDraft.execFile, mapping);
                           useTerritoiresStore.getState().fetchAll();
-                          // Persister le draft (mapping, chemin fichier, etc.) avant de fermer
+                          // Persister le draft en base + state local
                           const savedDraft = { ...stepperDraft, lastFilePath: stepperDraft.execFile?.name || stepperDraft.lastFilePath, _executing: false };
                           setSourceConfig(prev => ({ ...prev, [savedDraft.id]: savedDraft }));
+                          const { updateSource } = useSourcesStore.getState();
+                          await updateSource(savedDraft.id, { draft_config: toDraftConfig(savedDraft) }).catch(() => {});
                           setStepperDraft(null);
                           setSourceStepper(null);
                           if (result.failed > 0) {

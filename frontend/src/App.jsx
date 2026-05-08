@@ -190,7 +190,9 @@ export default function App() {
     const source = sourcesStore.sources.find(s => s.id === sourceId)
       || [...CATALOG, ...customSources].find(s => s.id === sourceId);
     if (!source) return;
-    const cfg = sourceConfig[sourceId] || {};
+    // draft_config (base) prioritaire sur sourceConfig (state local volatile)
+    const dc = source.draft_config || {};
+    const cfg = { ...dc, ...(sourceConfig[sourceId] || {}) };
     setStepperDraft({
       id: sourceId,
       nom: source.nom,
@@ -219,7 +221,7 @@ export default function App() {
       patterns: cfg.patterns || [],
       noPatterns: !!cfg.noPatterns,
       patternsOk: !!cfg.patternsOk,
-      // J8b
+      // J8b — fichier à recharger, mais métadonnées persistées
       execFile: null, execParsedFields: cfg.execParsedFields || [], execFeatureCount: cfg.execFeatureCount || 0, execNomField: cfg.execNomField || '',
     });
     setSourceStepper({ sourceId, step: "source", mode: "edit" });
