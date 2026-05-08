@@ -1788,7 +1788,7 @@ export default function SourceStepper({
                 >Sauvegarder & fermer</button>
                 {/* J8b : Bouton Play — visible si edit + format GeoJSON + target_type */}
                 {sourceStepper.mode === 'edit' && stepperDraft.format === 'GeoJSON' && stepperDraft.targetType && (() => {
-                  const canExec = stepperDraft.execFile && stepperDraft.execNomField && stepperDraft.fieldMappings?.some(m => m.sourceField && m.targetProp);
+                  const canExec = stepperDraft.execFile && stepperDraft.execNomField;
                   const isRunning = stepperDraft._executing;
                   return (
                     <button
@@ -1808,6 +1808,9 @@ export default function SourceStepper({
                           };
                           const result = await executeSource(stepperDraft.id, stepperDraft.execFile, mapping);
                           useTerritoiresStore.getState().fetchAll();
+                          // Persister le draft (mapping, chemin fichier, etc.) avant de fermer
+                          const savedDraft = { ...stepperDraft, lastFilePath: stepperDraft.execFile?.name || stepperDraft.lastFilePath, _executing: false };
+                          setSourceConfig(prev => ({ ...prev, [savedDraft.id]: savedDraft }));
                           setStepperDraft(null);
                           setSourceStepper(null);
                           if (result.failed > 0) {
