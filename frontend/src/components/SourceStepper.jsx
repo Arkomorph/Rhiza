@@ -218,13 +218,17 @@ export default function SourceStepper({
                                   if (json.features[0]?.geometry) {
                                     fields.push({ name: 'geometry', type: 'geometry', geomKind: json.features[0].geometry.type?.toLowerCase(), example: json.features[0].geometry.type });
                                   }
+                                  const detectedFieldNames = Object.keys(firstProps);
+                                  // Conserver execNomField si le champ existe dans le nouveau fichier
+                                  const keepNomField = stepperDraft.execNomField && detectedFieldNames.includes(stepperDraft.execNomField)
+                                    ? stepperDraft.execNomField : '';
                                   setStepperDraft({
                                     ...stepperDraft,
                                     endpoint: file.name,
                                     execFile: file,
-                                    execParsedFields: Object.keys(firstProps),
+                                    execParsedFields: detectedFieldNames,
                                     execFeatureCount: json.features.length,
-                                    execNomField: '',
+                                    execNomField: keepNomField,
                                     exposedFields: fields,
                                     selectedLayer: '(fichier)',
                                     sourceOk: true,
@@ -1783,19 +1787,28 @@ export default function SourceStepper({
                     cursor: "pointer", fontFamily: F.body, fontWeight: isLastStep && canValidateNow ? 600 : 500, flexShrink: 0,
                   }}
                 >Sauvegarder & fermer</button>
-                {/* J8b : Bouton Play — visible si edit + format GeoJSON + target_type */}
-                {sourceStepper.mode === 'edit' && stepperDraft.format === 'GeoJSON' && stepperDraft.targetType && (() => {
-                  const canExec = stepperDraft.execFile && stepperDraft.execNomField;
+                {/* J8b : Bouton Play — toujours visible, état variable */}
+                {(() => {
+                  const canExec = stepperDraft.execFile && stepperDraft.execNomField && stepperDraft.targetType;
                   const isRunning = stepperDraft._executing;
                   return (
                     <button
                       disabled={!canExec || isRunning}
-                      title={!canExec ? "Fichier + champ nom + au moins un mapping requis" : "Lancer l'exécution"}
+                      title={!canExec ? "Fichier chargé + champ nom + type cible requis" : "Lancer l'exécution"}
                       onClick={async () => {
                         if (!canExec || isRunning) return;
-                        console.log('[execute] sourceId:', stepperDraft.id, 'file:', stepperDraft.execFile?.name, 'nomField:', stepperDraft.execNomField);
                         setStepperDraft(d => ({ ...d, _executing: true }));
                         try {
+                          // En mode create, sauvegarder la source en base d'abord
+                          if (sourceStepper.mode === 'create' && stepperDraft.nom?.trim()) {
+                            await addSource({
+                              id: stepperDraft.id || nextId,
+                              nom: stepperDraft.nom.trim(),
+                              format: stepperDraft.format || 'GeoJSON',
+                              portail: stepperDraft.portail || null,
+                              target_type: stepperDraft.targetType || null,
+                            });
+                          }
                           const { executeSource } = useSourcesStore.getState();
                           const mapping = {
                             nom_field: stepperDraft.execNomField,
