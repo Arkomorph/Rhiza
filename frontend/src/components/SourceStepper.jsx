@@ -525,7 +525,8 @@ export default function SourceStepper({
                 {/* ═ Sous-section 2 : Mapping des propriétés ═ */}
                 {stepperDraft.targetType && (() => {
                   const tableFields = stepperDraft.exposedFields.filter(f => f.type !== "geometry" && f.name !== stepperDraft.execNomField);
-                  const allProps = [...targetProps, ...(stepperDraft.customProps || [])];
+                  // Exclure "nom" des cibles mappables — déjà nourri par l'encadré execNomField
+                  const allProps = [...targetProps, ...(stepperDraft.customProps || [])].filter(p => p.key !== 'nom');
                   const mappedCount = stepperDraft.fieldMappings.filter(m =>
                     tableFields.some(f => f.name === m.sourceField)
                   ).length;
