@@ -524,7 +524,7 @@ export default function SourceStepper({
 
                 {/* ═ Sous-section 2 : Mapping des propriétés ═ */}
                 {stepperDraft.targetType && (() => {
-                  const tableFields = stepperDraft.exposedFields.filter(f => f.type !== "geometry");
+                  const tableFields = stepperDraft.exposedFields.filter(f => f.type !== "geometry" && f.name !== stepperDraft.execNomField);
                   const allProps = [...targetProps, ...(stepperDraft.customProps || [])];
                   const mappedCount = stepperDraft.fieldMappings.filter(m =>
                     tableFields.some(f => f.name === m.sourceField)
