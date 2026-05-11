@@ -6,7 +6,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import sql from '../db/postgres.js';
 import { runCypher } from '../db/neo4j.js';
-import { auditMetier } from '../audit.js';
+import { auditSchema, auditMetier } from '../audit.js';
 import { propertyColumns } from '../helpers.js';
 
 // ─── Validation Zod ──────────────────────────────────────────────────
@@ -34,21 +34,9 @@ const createSourceSchema = z.object({
   target_type: z.string().nullable().optional(),
 });
 
-// ─── Audit helper ────────────────────────────────────────────────────
-
-async function audit(
-  action: 'INSERT' | 'UPDATE' | 'DELETE',
-  resourceId: string,
-  before: unknown,
-  after: unknown,
-) {
-  const beforeJson = before ? JSON.stringify(before) : null;
-  const afterJson = after ? JSON.stringify(after) : null;
-  await sql`
-    INSERT INTO config.schema_audit (action, resource_type, resource_id, before, after, source)
-    VALUES (${action}, 'sources', ${resourceId}, ${beforeJson}::jsonb, ${afterJson}::jsonb, 'api')
-  `;
-}
+// Audit : auditSchema importé depuis ../audit.ts
+const audit = (action: 'INSERT' | 'UPDATE' | 'DELETE', resourceId: string, before: unknown, after: unknown) =>
+  auditSchema(action, 'sources', resourceId, before, after);
 
 // ─── Plugin ──────────────────────────────────────────────────────────
 

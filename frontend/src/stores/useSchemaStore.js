@@ -7,7 +7,7 @@
 import { create } from 'zustand';
 import { flattenOntology, findPathForType, getEffectiveProps } from '../helpers/ontology.js';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://api.rhiza.ch';
+import { API_BASE } from '../config/api.js';
 
 // ─── Reconstruction de l'arbre depuis les données plates ─────────────
 
@@ -265,6 +265,15 @@ const useSchemaStore = create((set, get) => ({
     if (!type) return [];
     const path = findPathForType(ontologyTree, type);
     return path ? getEffectiveProps(ontologyTree, path) : [];
+  },
+
+  // Retourne la famille racine d'un type (ex: "Bâtiment" → "Territoire")
+  getTypeFamily: (type) => {
+    const { typesByFamily } = get();
+    for (const [family, types] of Object.entries(typesByFamily)) {
+      if (types.some(t => t.key === type)) return family;
+    }
+    return type; // fallback : le type est sa propre famille
   },
 
   // ── Mutations — POST/PATCH/DELETE puis refetch ─────────────────────

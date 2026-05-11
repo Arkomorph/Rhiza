@@ -10,7 +10,7 @@ import TreeNode from '../components/TreeNode.jsx';
 import DataTable from '../components/DataTable.jsx';
 import useTerritoiresStore from '../stores/useTerritoiresStore.js';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://api.rhiza.ch';
+import { API_BASE } from '../config/api.js';
 
 export default function TerritoiresPage({
   onNodeRenamed, onEdit, onArchive, onCreateChild,

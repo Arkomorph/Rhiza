@@ -45,3 +45,23 @@ d'origine, une description, et le jalon cible de résolution.
 - **Origine** : J8b Sprint 2
 - **Description** : La colonne `executed_by` dans `config.source_executions` est toujours NULL (pas de système d'auth actif Sprint 2).
 - **Résolution** : Sprint 3 — quand l'auth sera en place, passer `request.user.id`.
+
+## D25 — setOntologyTree noop dans SchemaPage
+- **Origine** : Diagnostic post-Sprint 2, §3.2
+- **Description** : SchemaPage reçoit `setOntologyTree` et `setEdgeTypes` en props depuis App.jsx, mais ces fonctions sont des noop. Les mutations passent par le store Zustand (API). Les appels à `setOntologyTree(treeRemoveProp(...))` dans les modales sont morts — trompeur pour la lecture.
+- **Résolution** : Prochain jalon qui touche SchemaPage — nettoyer le contrat props vs store.
+
+## D26 — SourceStepper prop-drilling redondant avec stores Zustand
+- **Origine** : Diagnostic post-Sprint 2, §3.3
+- **Description** : SourceStepper importe 3 stores Zustand directement ET reçoit 14 props depuis App.jsx, dont certaines dupliquent ce que les stores fournissent (ontologyTree, getSchemaPropsForType, edgeTypes). Sous-problème distinct de la dette SourceStepper monolithique.
+- **Résolution** : J7 ou prochain jalon touchant le stepper — remplacer les props redondantes par des lectures directes du store.
+
+## D27 — DonneesPage fetch direct hors store pour archivées
+- **Origine** : Diagnostic post-Sprint 2, §3.4
+- **Description** : DonneesPage fait des `fetch()` directes vers `/sources?include_archived=true` en parallèle du store. Le store gère les sources actives, DonneesPage reconstruit sa propre logique pour les archivées — deux mécanismes de cache parallèles.
+- **Résolution** : Prochain jalon touchant DonneesPage — intégrer le fetch archivées dans useSourcesStore.
+
+## D28 — ADR-002 mentionne "transaction" pour le dual Postgres+Neo4j
+- **Origine** : Diagnostic post-Sprint 2, §5.6
+- **Description** : ADR-002 dit "Changement de nature = deux opérations dans la même transaction". En réalité POST /territoires crée le nœud Neo4j après la transaction Postgres avec compensation (DELETE si Neo4j échoue). Ce n'est pas une transaction distribuée au sens strict. L'ADR devrait préciser "saga avec compensation" au lieu de "transaction".
+- **Résolution** : Mise à jour de l'ADR-002 lors du prochain jalon infrastructure.

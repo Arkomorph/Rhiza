@@ -6,6 +6,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import sql from '../db/postgres.js';
+import { auditSchema as audit } from '../audit.js';
 
 // ─── Validation Zod (Décision P) ─────────────────────────────────────
 // Enum fermées pour data_type et geom_kind — plus de TEXT libre.
@@ -52,25 +53,7 @@ const edgePropSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
-// ─── Audit helper ────────────────────────────────────────────────────
-
-async function audit(
-  action: 'INSERT' | 'UPDATE' | 'DELETE',
-  resourceType: string,
-  resourceId: string,
-  before: unknown,
-  after: unknown,
-) {
-  const beforeJson = before ? JSON.stringify(before) : null;
-  const afterJson = after ? JSON.stringify(after) : null;
-  await sql`
-    INSERT INTO config.schema_audit (action, resource_type, resource_id, before, after, source)
-    VALUES (${action}, ${resourceType}, ${resourceId},
-            ${beforeJson}::jsonb,
-            ${afterJson}::jsonb,
-            'api')
-  `;
-}
+// Audit : auditSchema importé depuis ../audit.ts (alias 'audit')
 
 // ─── Verrou helper (Décision N) ──────────────────────────────────────
 

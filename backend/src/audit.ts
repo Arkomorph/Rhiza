@@ -1,11 +1,31 @@
-// ─── Audit métier — Jalon 6.5 ────────────────────────────────────────
-// Fonction utilitaire pour tracer les mutations sur les entités métier
-// (territoires, acteurs, décisions, flux) dans metier.audit.
-// Séparée de l'audit schéma (config.schema_audit).
+// ─── Fonctions d'audit partagées ─────────────────────────────────────
+// auditSchema() → config.schema_audit (mutations schéma + sources)
+// auditMetier() → metier.audit (mutations entités métier)
 
 import sql from './db/postgres.js';
 
 type Action = 'INSERT' | 'UPDATE' | 'DELETE';
+
+// ─── Audit schéma (config.schema_audit) ─────────────────────────────
+
+export async function auditSchema(
+  action: Action,
+  resourceType: string,
+  resourceId: string,
+  before: unknown,
+  after: unknown,
+): Promise<void> {
+  const beforeJson = before ? JSON.stringify(before) : null;
+  const afterJson = after ? JSON.stringify(after) : null;
+  await sql`
+    INSERT INTO config.schema_audit (action, resource_type, resource_id, before, after, source)
+    VALUES (${action}, ${resourceType}, ${resourceId},
+            ${beforeJson}::jsonb, ${afterJson}::jsonb, 'api')
+  `;
+}
+
+// ─── Audit métier (metier.audit) ────────────────────────────────────
+
 type ResourceType = 'territoires' | 'acteurs' | 'decisions' | 'flux';
 type Source = 'api' | 'seed' | 'migration' | 'pipeline';
 

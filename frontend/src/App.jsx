@@ -146,301 +146,56 @@ export default function App() {
 
   // ─── Stepper source : ouverture en création ou édition ─────────────
 
-  const openSourceStepperCreate = () => {
-    const sourceNextId = sourcesStore.nextId || `S${String(Date.now()).slice(-3)}`;
-    setStepperDraft({
-      id: sourceNextId,
-      nom: "",
-      format: "WFS",
-      portail: "",
-      endpoint: "",
-      // Multi-couche : liste des couches découvertes + celle sélectionnée
-      availableLayers: [],       // rempli par "Découvrir les couches" pour WFS/GPKG/INTERLIS
-      selectedLayer: "",         // id de la couche choisie, ou le fichier pour mono-couche
-      exposedFields: [],         // champs de la couche sélectionnée
-      sourceOk: false,
-      // Step 2 — Mapping (type + propriétés + matching optionnel)
-      targetType: "",
-      fieldMappings: [],
-      // Matching — sous-section 3, optionnelle, deux blocs indépendants
-      matchAttrEnabled: false,
-      matchingField: "",
-      matchingKey: "",
-      matchSpatialEnabled: false,
-      matchingGeomField: "",
-      matchingTargetGeomProp: "",        // propriété géométrique du nœud existant (cible du matching spatial)
-      matchingSpatialMethod: "",         // clé d'opération PostGIS, filtrée selon paire (sourceGeomKind, targetGeomKind)
-      matchingSpatialTolerance: 2,
-      matchingPriority: "attr_first",  // "attr_first" | "spatial_first" | "cross_confirm"
-      matchingScope: [],                // ids des contenants cochés (vide = global)
-      mappingOk: false,
-      customProps: [],                   // propriétés ad hoc ajoutées via le dropdown du mapping (mock parcours 5)
-      // Step 3 — Patterns
-      patterns: [],                      // [{ id, mode, edgeType, direction, otherNodeType, ... }]
-      noPatterns: false,                 // "Aucun pattern — source autoportante" coché
-      patternsOk: false,
-      // J8b
-      execFile: null, execParsedFields: [], execFeatureCount: 0, execNomField: '',
-    });
-    setSourceStepper({ sourceId: sourceNextId, step: "source", mode: "create" });
-  };
-
-  const openSourceStepperEdit = (sourceId) => {
-    // Chercher dans les sources API (réelles) puis fallback CATALOG/custom
-    const source = sourcesStore.sources.find(s => s.id === sourceId)
-      || [...CATALOG, ...customSources].find(s => s.id === sourceId);
-    if (!source) return;
-    // draft_config (base) prioritaire sur sourceConfig (state local volatile)
-    const dc = source.draft_config || {};
-    const cfg = { ...dc, ...(sourceConfig[sourceId] || {}) };
-    setStepperDraft({
-      id: sourceId,
-      nom: source.nom,
-      format: source.format,
-      portail: source.portail || '',
-      endpoint: cfg.endpoint || "",
-      lastFilePath: cfg.lastFilePath || "",
-      availableLayers: cfg.availableLayers || [],
-      selectedLayer: cfg.selectedLayer || "",
-      exposedFields: cfg.exposedFields || [],
-      sourceOk: !!cfg.sourceOk || !!(source.target_type),
-      targetType: source.target_type || cfg.targetType || "",
-      fieldMappings: cfg.fieldMappings || [],
-      matchAttrEnabled: !!cfg.matchAttrEnabled,
-      matchingField: cfg.matchingField || "",
-      matchingKey: cfg.matchingKey || "",
-      matchSpatialEnabled: !!cfg.matchSpatialEnabled,
-      matchingGeomField: cfg.matchingGeomField || "",
-      matchingTargetGeomProp: cfg.matchingTargetGeomProp || "",
-      matchingSpatialMethod: cfg.matchingSpatialMethod || "",
-      matchingSpatialTolerance: cfg.matchingSpatialTolerance ?? 2,
-      matchingPriority: cfg.matchingPriority || "attr_first",
-      matchingScope: cfg.matchingScope || [],
-      mappingOk: !!cfg.mappingOk,
-      customProps: cfg.customProps || [],
-      patterns: cfg.patterns || [],
-      noPatterns: !!cfg.noPatterns,
-      patternsOk: !!cfg.patternsOk,
-      // J8b — fichier à recharger, mais métadonnées persistées
-      execFile: null, execParsedFields: cfg.execParsedFields || [], execFeatureCount: cfg.execFeatureCount || 0, execNomField: cfg.execNomField || '',
-    });
-    setSourceStepper({ sourceId, step: "source", mode: "edit" });
-  };
-
-  // ─── Ouverture stepper sur Step 2 pour exécution (J8b) ─────────────
-  const openSourceStepperExecute = (sourceId) => {
-    const source = sourcesStore.sources.find(s => s.id === sourceId);
-    if (!source) return;
-    const cfg = sourceConfig[sourceId] || {};
-    setStepperDraft({
-      id: sourceId,
-      nom: source.nom,
-      format: source.format,
-      portail: source.portail,
-      endpoint: cfg.endpoint || "",
-      lastFilePath: cfg.lastFilePath || "",
-      availableLayers: cfg.availableLayers || [],
-      selectedLayer: cfg.selectedLayer || "",
-      exposedFields: cfg.exposedFields || [],
-      sourceOk: true,
-      targetType: source.target_type || cfg.targetType || "",
-      fieldMappings: cfg.fieldMappings || [],
-      matchAttrEnabled: !!cfg.matchAttrEnabled,
-      matchingField: cfg.matchingField || "",
-      matchingKey: cfg.matchingKey || "",
-      matchSpatialEnabled: !!cfg.matchSpatialEnabled,
-      matchingGeomField: cfg.matchingGeomField || "",
-      matchingTargetGeomProp: cfg.matchingTargetGeomProp || "",
-      matchingSpatialMethod: cfg.matchingSpatialMethod || "",
-      matchingSpatialTolerance: cfg.matchingSpatialTolerance ?? 2,
-      matchingPriority: cfg.matchingPriority || "attr_first",
-      matchingScope: cfg.matchingScope || [],
-      mappingOk: !!cfg.mappingOk,
-      customProps: cfg.customProps || [],
-      patterns: cfg.patterns || [],
-      noPatterns: !!cfg.noPatterns,
-      patternsOk: !!cfg.patternsOk,
-      // J8b : fichier à recharger, mais on conserve les métadonnées
-      execFile: null,
-      execParsedFields: cfg.execParsedFields || [],
-      execFeatureCount: cfg.execFeatureCount || 0,
-      execNomField: cfg.execNomField || '',
-    });
-    setSourceStepper({ sourceId, step: "source", mode: "edit" });
-  };
-
-  // ─── Exécution d'une source (mock) ──────────────────────────────────
-  // Simule l'import des données et la détection de changements lors des exécutions
-  // successives. Structure fidèle à ce que le backend Rust/PostGIS+Neo4j produira :
-  // - PostgreSQL : lignes insérées/archivées (valid_from/valid_to) par entité
-  // - Neo4j : nœuds du type cible + Décisions automatiques D9 sur changement
-  // Note pour la suite : on mock seulement les nœuds, pas les arêtes. Le vrai
-  // backend produira aussi les détachements d'arêtes (Possède, etc.) quand un
-  // update concerne une propriété qui pilote un pattern.
-  const executeSource = (sourceId) => {
-    const cfg = sourceConfig[sourceId] || {};
-    const execs = cfg.executions || [];
-    const source = [...CATALOG, ...customSources].find(s => s.id === sourceId);
-    if (!source) return;
-
-    const now = new Date().toISOString();
-    const newExecId = `exec-${Date.now()}`;
-    let newExec;
-    let newNodes = [];
-
-    if (execs.length === 0) {
-      // Première exécution — création de N nœuds-jouets
-      const count = 8 + Math.floor(Math.random() * 8); // 8 à 15
-      const changes = [];
-
-      // Géométries déduites du mapping : propriétés cibles qui sont de type geometry
-      const schemaProps = getSchemaPropsForType(cfg.targetType);
-      const allTargetProps = [...schemaProps, ...(cfg.customProps || [])];
-      const geomMappings = (cfg.fieldMappings || []).map(m => {
-        const tprop = allTargetProps.find(p => p.key === m.targetProp);
-        if (!tprop || tprop.type !== "geometry") return null;
-        const sf = (cfg.exposedFields || []).find(f => f.name === m.sourceField);
-        return { propKey: m.targetProp, propLabel: tprop.label, geomKind: tprop.geomKind || sf?.geomKind || "polygon" };
-      }).filter(Boolean);
-
-      for (let i = 0; i < count; i++) {
-        const nid = `${cfg.targetType || "X"}-${sourceId}-${Date.now()}-${i}`.toLowerCase();
-        newNodes.push({
-          id: nid,
-          nom: `${cfg.targetType || "Nœud"} ${i + 1} · ${source.nom}`,
-          type: cfg.targetType || "Parcelle",
-          status: "active",
-          sources: [sourceId],
-          fromSource: sourceId,
-          parentId: cfg.matchingScope?.[0] || "suisse",
-          // Cumul typé multi-source — chaque géométrie dépose une trace par source.
-          // Dans la vraie archi : table PostGIS versionnée par propriété, ici juste mock.
-          geometries: geomMappings.map(g => ({
-            propKey: g.propKey,
-            propLabel: g.propLabel,
-            geomKind: g.geomKind,
-            source: source.nom,
-            confidence: "high",
-            importedAt: now,
-          })),
-        });
-        changes.push({
-          type: "create",
-          entity: (cfg.targetType || "Nœud").toLowerCase(),
-          id: nid,
-          description: `Nouveau ${(cfg.targetType || "nœud").toLowerCase()} créé`,
-        });
-      }
-      newExec = {
-        id: newExecId,
-        date: now,
-        changes,
-        autoDecisions: [],
-        summary: `${count} nœud${count > 1 ? "s" : ""} créé${count > 1 ? "s" : ""}`,
-        geomSummary: geomMappings.map(g => `${count} ${g.propLabel.toLowerCase()} (${g.geomKind})`),
-      };
+  // ─── Ouverture du SourceStepper — fonction unique paramétrée ────────
+  // mode: "create" | "edit", step: "source" | "mapping" | "patterns"
+  const openSourceStepper = (mode, sourceId, step = "source") => {
+    if (mode === "create") {
+      const nextId = sourcesStore.nextId || `S${String(Date.now()).slice(-3)}`;
+      setStepperDraft({
+        id: nextId, nom: "", format: "WFS", portail: "", endpoint: "",
+        availableLayers: [], selectedLayer: "", exposedFields: [], sourceOk: false,
+        targetType: "", fieldMappings: [],
+        matchAttrEnabled: false, matchingField: "", matchingKey: "",
+        matchSpatialEnabled: false, matchingGeomField: "", matchingTargetGeomProp: "",
+        matchingSpatialMethod: "", matchingSpatialTolerance: 2, matchingPriority: "attr_first",
+        matchingScope: [], mappingOk: false, customProps: [],
+        patterns: [], noPatterns: false, patternsOk: false,
+        execFile: null, execParsedFields: [], execFeatureCount: 0, execNomField: '',
+      });
+      setSourceStepper({ sourceId: nextId, step, mode: "create" });
     } else {
-      // Exécutions suivantes — tirage pondéré
-      const roll = Math.random();
-      if (roll < 0.6) {
-        // 60% · aucun changement
-        newExec = {
-          id: newExecId,
-          date: now,
-          changes: [],
-          autoDecisions: [],
-          summary: "Aucun changement",
-        };
-      } else {
-        // 40% · 1 à 10 changements
-        const count = roll < 0.9 ? (1 + Math.floor(Math.random() * 3)) : (5 + Math.floor(Math.random() * 6));
-        const sourceNodes = nodes.filter(n => n.fromSource === sourceId);
-        const changes = [];
-        const autoDecisions = [];
-        for (let i = 0; i < count; i++) {
-          const target = sourceNodes[Math.floor(Math.random() * sourceNodes.length)];
-          if (!target) break;
-          const kind = Math.random();
-          if (kind < 0.6) {
-            // update — change la valeur d'une propriété
-            const props = getSchemaPropsForType(target.type);
-            const prop = props[Math.floor(Math.random() * props.length)];
-            const propKey = prop?.key || "nom";
-            changes.push({
-              type: "update",
-              entity: target.type.toLowerCase(),
-              id: target.id,
-              property: propKey,
-              oldValue: "valeur précédente",
-              newValue: "nouvelle valeur",
-              description: `${target.nom} — ${propKey} modifié`,
-            });
-            autoDecisions.push({
-              id: `D-${Date.now()}-${i}`,
-              type: `changement_${target.type.toLowerCase()}`,
-              impactedNodeId: target.id,
-              description: `${target.nom} — ${propKey} modifié`,
-              date: now,
-              source: source.nom,
-              confidence: "high",
-            });
-          } else if (kind < 0.85) {
-            // create — nouveau nœud
-            const nid = `${target.type}-${sourceId}-new-${Date.now()}-${i}`.toLowerCase();
-            newNodes.push({
-              id: nid,
-              nom: `${target.type} nouveau · ${source.nom}`,
-              type: target.type,
-              status: "active",
-              sources: [sourceId],
-              fromSource: sourceId,
-              parentId: target.parentId,
-            });
-            changes.push({
-              type: "create",
-              entity: target.type.toLowerCase(),
-              id: nid,
-              description: `Nouveau ${target.type.toLowerCase()}`,
-            });
-          } else {
-            // delete — archivage d'un nœud existant
-            changes.push({
-              type: "delete",
-              entity: target.type.toLowerCase(),
-              id: target.id,
-              description: `${target.nom} — radié`,
-            });
-            autoDecisions.push({
-              id: `D-${Date.now()}-${i}`,
-              type: `radiation_${target.type.toLowerCase()}`,
-              impactedNodeId: target.id,
-              description: `${target.nom} — radié`,
-              date: now,
-              source: source.nom,
-              confidence: "high",
-            });
-          }
-        }
-        newExec = {
-          id: newExecId,
-          date: now,
-          changes,
-          autoDecisions,
-          summary: `${changes.length} changement${changes.length > 1 ? "s" : ""} détecté${changes.length > 1 ? "s" : ""}`,
-        };
-      }
+      const source = sourcesStore.sources.find(s => s.id === sourceId)
+        || [...CATALOG, ...customSources].find(s => s.id === sourceId);
+      if (!source) return;
+      const dc = source.draft_config || {};
+      const cfg = { ...dc, ...(sourceConfig[sourceId] || {}) };
+      setStepperDraft({
+        id: sourceId,
+        nom: source.nom, format: source.format, portail: source.portail || '',
+        endpoint: cfg.endpoint || "", lastFilePath: cfg.lastFilePath || "",
+        availableLayers: cfg.availableLayers || [], selectedLayer: cfg.selectedLayer || "",
+        exposedFields: cfg.exposedFields || [],
+        sourceOk: !!cfg.sourceOk || !!(source.target_type),
+        targetType: source.target_type || cfg.targetType || "",
+        fieldMappings: cfg.fieldMappings || [],
+        matchAttrEnabled: !!cfg.matchAttrEnabled, matchingField: cfg.matchingField || "",
+        matchingKey: cfg.matchingKey || "",
+        matchSpatialEnabled: !!cfg.matchSpatialEnabled, matchingGeomField: cfg.matchingGeomField || "",
+        matchingTargetGeomProp: cfg.matchingTargetGeomProp || "",
+        matchingSpatialMethod: cfg.matchingSpatialMethod || "",
+        matchingSpatialTolerance: cfg.matchingSpatialTolerance ?? 2,
+        matchingPriority: cfg.matchingPriority || "attr_first",
+        matchingScope: cfg.matchingScope || [], mappingOk: !!cfg.mappingOk,
+        customProps: cfg.customProps || [],
+        patterns: cfg.patterns || [], noPatterns: !!cfg.noPatterns, patternsOk: !!cfg.patternsOk,
+        execFile: null, execParsedFields: cfg.execParsedFields || [],
+        execFeatureCount: cfg.execFeatureCount || 0, execNomField: cfg.execNomField || '',
+      });
+      setSourceStepper({ sourceId, step, mode: "edit" });
     }
-
-    setSourceConfig(prev => ({
-      ...prev,
-      [sourceId]: {
-        ...cfg,
-        imported: true,
-        executions: [...execs, newExec],
-      }
-    }));
-    if (newNodes.length > 0) territoiresStore.fetchAll(); // refetch après import
   };
+  const openSourceStepperCreate = () => openSourceStepper("create");
+  const openSourceStepperEdit = (sourceId) => openSourceStepper("edit", sourceId);
 
   // ─── Arbre de lignes SVG pour la modale d'archivage ────────────────
   useLayoutEffect(() => {

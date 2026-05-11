@@ -4,7 +4,7 @@
 
 import { create } from 'zustand';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://api.rhiza.ch';
+import { API_BASE } from '../config/api.js';
 
 // Calcule le prochain ID disponible (format S001, S002, ..., S1000)
 function computeNextId(sources) {

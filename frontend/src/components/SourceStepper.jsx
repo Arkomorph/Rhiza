@@ -6,7 +6,7 @@ import { CATALOG } from '../data/catalog.js';
 import { SPATIAL_OPS, compatibleSpatialOps } from '../data/edge-types.js';
 import { lighten, colorForOntologyPath } from '../helpers/colors.js';
 import { getEffectiveExpectations } from '../helpers/ontology.js';
-import { TYPE_FAMILY, compatibleEdges } from '../helpers/spatial.js';
+import { compatibleEdges } from '../helpers/spatial.js';
 import { toast } from 'sonner';
 import useSchemaStore from '../stores/useSchemaStore.js';
 import useSourcesStore from '../stores/useSourcesStore.js';
@@ -947,14 +947,14 @@ export default function SourceStepper({
 
 
           {sourceStepper.step === "patterns" && (() => {
-            const targetFam = TYPE_FAMILY(stepperDraft.targetType);
+            const targetFam = useSchemaStore.getState().getTypeFamily(stepperDraft.targetType);
             const patterns = stepperDraft.patterns || [];
 
             // Résolution targetType (string) → chemin ontologique (array)
             const targetPath = stepperDraft.targetType
-              ? (TYPE_FAMILY(stepperDraft.targetType) === stepperDraft.targetType
+              ? (useSchemaStore.getState().getTypeFamily(stepperDraft.targetType) === stepperDraft.targetType
                   ? [stepperDraft.targetType]
-                  : [TYPE_FAMILY(stepperDraft.targetType), stepperDraft.targetType])
+                  : [useSchemaStore.getState().getTypeFamily(stepperDraft.targetType), stepperDraft.targetType])
               : null;
 
             // Lecture des attentes ontologiques effectives pour le type cible (parcours 5 §I7 → bascule § WW)
@@ -1187,7 +1187,7 @@ export default function SourceStepper({
 
                     {patterns.map((p, idx) => {
                       const complete = isPatternCompleteHelper(p);
-                      const otherFam = p.otherNodeType ? TYPE_FAMILY(p.otherNodeType) : "";
+                      const otherFam = p.otherNodeType ? useSchemaStore.getState().getTypeFamily(p.otherNodeType) : "";
                       const availableEdges = p.otherNodeType ? compatibleEdges(targetFam, otherFam, edgeTypes) : [];
                       const targetTypeColor = TC[stepperDraft.targetType] || C.muted;
                       const otherTypeColor = p.otherNodeType ? (TC[p.otherNodeType] || C.muted) : C.border;

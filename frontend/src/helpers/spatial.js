@@ -1,13 +1,8 @@
-// ─── Helpers spatiaux et familles de types ───────────────────────────
-// Fonctions pures — pas de dépendance au store Zustand ni de constantes hardcodées.
-// Les composants récupèrent les données depuis le store et les passent en argument.
+// ─── Helpers spatiaux ────────────────────────────────────────────────
+// Fonctions pures — pas de dépendance au store Zustand.
+// TYPE_FAMILY supprimé — utiliser useSchemaStore.getTypeFamily() à la place.
 
-export const TYPE_FAMILY = (t) => {
-  if (["Canton", "Commune", "Secteur", "Quartier", "Parcelle", "Bâtiment", "Unité", "Pièce", "Suisse"].includes(t)) return "Territoire";
-  return t;
-};
-
-// canonical et edgeTypes passés en argument — plus d'import statique
+// Types intermédiaires entre parent et cible dans la chaîne canonique
 export function getIntermediaryTypes(parentType, targetType, canonical) {
   const pi = canonical.indexOf(parentType);
   const ti = canonical.indexOf(targetType);

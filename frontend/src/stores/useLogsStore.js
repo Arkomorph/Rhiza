@@ -4,7 +4,7 @@
 
 import { create } from 'zustand';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://api.rhiza.ch';
+import { API_BASE } from '../config/api.js';
 const LOGS_TOKEN = import.meta.env.VITE_LOGS_TOKEN || '';
 
 const useLogsStore = create((set, get) => ({
